@@ -1,0 +1,261 @@
+# avengers-12 — the only file you have to change.
+#
+# Project: Smart-Task-Planner (Local AI Task Planner).
+# Spec: plan_compact.md. Stack, per plan_compact.md §10:
+#   backend/   Kotlin + Ktor + Gradle (Kotlin DSL), SQLite via Exposed
+#   frontend/  React + TypeScript + Vite
+#
+# IMPORTANT, read this before the first implement run:
+# at the time this file was written the repository had NO product code and NO
+# commits — only the spec and this harness. Every path below under backend/ and
+# frontend/ is therefore the AGREED layout, not an observed one. The verify
+# commands are real commands for that layout and will fail loudly (never
+# silently green) until the foundation exists. Scaffold it by hand, then come
+# back and fill in `tests:` below.
+
+version: 1
+
+# --- the gate --------------------------------------------------------------
+# Checked AFTER the agent finishes and BEFORE anything is pushed. The agent is
+# never asked whether it behaved; the diff is inspected.
+gate:
+  # Paths a run may never touch.
+  deny:
+    # --- the harness itself -------------------------------------------------
+    - ".github/**"
+    - ".claude/**"
+    - "avengers-12/**"
+
+    # --- house rules and the product spec. Read, never rewritten ------------
+    # CLAUDE.md is listed in houseRules: below. plan_compact.md is the product
+    # definition every issue is derived from; a run that can edit it can edit
+    # its own requirements.
+    - "CLAUDE.md"
+    - "AGENTS.md"
+    - "plan_compact.md"
+
+    # --- secrets and signing material ---------------------------------------
+    - ".env"
+    - ".env.*"
+    - "**/secrets/**"
+    - "**/credentials/**"
+    - "**/*.keystore"
+    - "**/*.jks"
+    - "**/*.p12"
+
+    # --- build infrastructure -----------------------------------------------
+    # The Gradle wrapper decides which Gradle runs the build, so a run that can
+    # edit it can change what "the build passed" means. The lockfiles are
+    # denied for the same reason: `npm ci` installs exactly what the lockfile
+    # says, so a dependency change is a human decision, made in a normal PR.
+    - "**/gradle/wrapper/**"
+    - "**/gradlew"
+    - "**/gradlew.bat"
+    - "**/gradle.properties"
+    - "**/package-lock.json"
+    - "**/pnpm-lock.yaml"
+    - "**/yarn.lock"
+
+    # --- everything no verify step below covers -----------------------------
+    # Only backend/ and frontend/ are built and tested. Anything else can be
+    # changed by a run that then reports green having proved nothing, so it is
+    # denied. Add a verify step first if you want one of these opened up.
+    - "*.md"
+    - "*.yml"
+    - "*.yaml"
+    - "*.json"
+    - ".gitignore"
+    - ".gitattributes"
+    - "docs/**"
+    - "scripts/**"
+    - ".vscode/**"
+    - ".idea/**"
+
+  # A change touching more than this many files is not "one fix per run".
+  maxFilesChanged: 100
+
+  # Paths allowed even though a deny pattern above matches them.
+  # Evaluated before deny; first match wins.
+  allow: []
+
+# --- how a change proves itself --------------------------------------------
+# Run in order; all must pass or nothing is pushed. `when` is a path glob: the
+# step is skipped when the diff does not touch it, so a frontend-only run does
+# not pay for the Gradle build.
+#
+# Two independent builds, each with its own directory and its own lockfile, so
+# each gets its own step. Without that, half the repository is never built.
+#
+# `./gradlew build` runs `check` as well as `assemble`, so it compiles AND runs
+# the JVM tests. `npm test` is expected to be Vitest in run (non-watch) mode —
+# a watch-mode test script would hang the runner until the job times out.
+verify:
+  - name: backend
+    run: ./gradlew --no-daemon build
+    workingDirectory: backend
+    when: "backend/**"
+    chmod: gradlew
+
+  - name: frontend
+    run: npm ci && npm run build && npm test
+    workingDirectory: frontend
+    when: "frontend/**"
+
+# --- where tests go ---------------------------------------------------------
+# Deliberately empty: there is no test anywhere in this repository yet, and
+# naming a directory that does not exist would point the coder at nothing and
+# make "tests are green" a statement about zero tests.
+#
+# FILL THESE IN as soon as the foundation lands. Expected, once it does:
+#   directory: backend/src/test/kotlin   (and frontend/src/**/*.test.tsx)
+#   example:   one small, clear existing test file — not the biggest one
+# `directory` must be somewhere the verify commands above actually run.
+tests:
+  directory: ""
+  example: ""
+  # Directories that look like tests but are NOT run by the verify commands.
+  notRun: []
+
+# --- what the runner needs before verify ------------------------------------
+runtime:
+  # Kotlin/Ktor backend. Current LTS; matches what the Gradle toolchain in
+  # backend/ should be pinned to.
+  java: "21"
+  javaDistribution: temurin
+  cache:
+    - ~/.gradle/caches
+    - ~/.gradle/wrapper
+    - ~/.npm
+  cacheKeyFiles:
+    - "backend/gradle/wrapper/gradle-wrapper.properties"
+    - "backend/**/*.gradle.kts"
+    - "frontend/package-lock.json"
+  # Left empty on purpose: the gradlew chmod is done by the backend verify step
+  # above, which tolerates the file not existing yet. The workflow's chmod step
+  # is less forgiving.
+  chmod: []
+
+# --- what the coder may and may not do --------------------------------------
+# Write/Edit denies are NOT listed here — every path in gate.deny above is
+# turned into a Write() and an Edit() deny automatically by
+# avengers-12/lib/emit-settings.sh.
+permissions:
+  # The build tools named in verify, and nothing else. Read-only git is already
+  # allowed; git push, gh, curl and wget are already denied for everyone.
+  allowBash:
+    - "./gradlew:*"
+    - "gradle:*"
+    - "npm:*"
+    - "npx:*"
+    - "node:*"
+
+  # Paths the agent may not even READ.
+  denyRead:
+    - ".env"
+    - ".env.*"
+    - "**/secrets/**"
+    - "**/credentials/**"
+    - "**/*.keystore"
+    - "**/*.jks"
+    - ".git/config"
+    - "**/.git/**"
+
+# --- advisory review --------------------------------------------------------
+# Purely advisory: never blocks a run, never changes a verdict.
+#
+# Empty on purpose. The Kotlin/TypeScript reviewers worth naming here
+# (kotlin-reviewer, everything-claude-code:kotlin-reviewer) are installed in the
+# owner's local Claude Code, not in this repository, so they do not exist on the
+# GitHub runner. Naming one would ask for an agent that is not there. Add a
+# reviewer under .claude/agents/ first, then name it here.
+review:
+  agent: ""
+
+# --- the soul folder --------------------------------------------------------
+# The repository's memory, written by the loop, for the loop. Committed on the
+# branch, so it arrives with the pull request.
+soul:
+  directory: soul
+  readNotes: 3
+
+# --- house rules ------------------------------------------------------------
+# Markdown the coder reads before it writes anything. Only files that exist.
+#
+# CLAUDE.md is the only one here today. It is two lines and points at
+# plan_compact.md, which is 2500 lines — deliberately NOT listed, because it
+# would be read in full on every single run. The relevant slice of the spec
+# belongs in the issue.
+houseRules:
+  - "CLAUDE.md"
+
+# --- one-time bootstrap -----------------------------------------------------
+# seed-board.sh turns `- [ ]` checklists into issues. plan_compact.md contains
+# none — its build order is fenced text, not checkboxes — so there is nothing
+# to seed from.
+seed:
+  sources: []
+
+# --- the board --------------------------------------------------------------
+# `optional: true` = the loop runs on labels alone. Column names must match the
+# GitHub Project exactly; a new Project has only Todo, In Progress and Done.
+board:
+  optional: true
+  statusField: Status
+  columns:
+    todo: Todo
+    inProgress: In Progress
+    inReview: In Review
+    blocked: Blocked
+    done: Done
+
+# --- labels -----------------------------------------------------------------
+labels:
+  prefix: "loop:"
+  ready: "loop:ready"
+  inProgress: "loop:in-progress"
+  inReview: "loop:in-review"
+  blocked: "loop:blocked"
+  needsSpec: "loop:needs-spec"
+
+# --- branches ---------------------------------------------------------------
+branch:
+  prefix: "loop/issue-"
+
+# --- running on a timer -----------------------------------------------------
+# The workflow's cron fires hourly; avengers-12/lib/schedule-gate.sh stops the
+# run unless this many hours have passed since the last logged run. 0 turns the
+# timer off entirely.
+schedule:
+  everyHours: 24
+
+# --- caps -------------------------------------------------------------------
+# maxRunsPerDay applies to SCHEDULED runs only.
+budget:
+  maxRunsPerDay: 2
+  maxAttemptsPerRun: 3
+  staleClaimHours: 2
+  priorFilesMax: 200
+
+# --- models -----------------------------------------------------------------
+models:
+  triage:
+    model: claude-sonnet-5
+    effort: medium
+    maxTurns: 30
+  implement:
+    model: claude-opus-5
+    effort: high
+    maxTurns: 80
+
+# --- where the harness keeps things ----------------------------------------
+paths:
+  state: avengers-12/state/STATE.md
+  runLog: avengers-12/state/run-log.md
+  rules: avengers-12/rules
+  settings: avengers-12/settings
+  lib: avengers-12/lib
+
+# --- git identity used for harness commits ---------------------------------
+git:
+  userName: avengers-12-loop
+  userEmail: loop@users.noreply.github.com
