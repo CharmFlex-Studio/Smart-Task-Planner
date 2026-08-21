@@ -6,6 +6,17 @@ here ships without a "what's new" — keep it up to date as part of the version 
 
 ## 0.3.0
 
+**Checkboxes tick with a click, in the editor as well as the reading view.** Clicking one
+rewrites the three characters of the marker, so it goes through undo and lands on disk as
+those three bytes.
+
+**Enter carries a list on.** A new bullet, the next number, or a fresh unticked box,
+keeping the indentation. A second Enter on an empty item ends the list. Tab and Shift-Tab
+indent and outdent an item.
+
+**Wrapped list items hang under their text** instead of falling back to the margin, quotes
+carry a bar down every line they wrap onto, and fenced code reads as a block.
+
 **The editor shows formatted text as you type.** Descriptions and comments no longer show
 raw markdown while you are editing them: bold looks bold, headings look like headings,
 bullets are bullets and checkboxes are boxes, in the same box you are typing in. The

@@ -47,6 +47,25 @@ export const editorTheme = EditorView.theme({
   '.cm-md-h5': { fontSize: '1em', fontWeight: '600' },
   '.cm-md-h6': { fontSize: '1em', fontWeight: '600', color: 'var(--muted)' },
   '.cm-md-bullet': { color: 'var(--faint)' },
-  '.cm-md-box': { color: 'var(--faint)' },
+
+  // The box is a control, so it has to look and behave like one.
+  '.cm-md-box': { color: 'var(--faint)', cursor: 'pointer', borderRadius: '3px' },
   '.cm-md-box.on': { color: 'var(--accent)' },
+  '.cm-md-box:hover': { color: 'var(--accent)' },
+  '.cm-md-box:focus-visible': { outline: '2px solid var(--accent)', outlineOffset: '1px' },
+
+  // Wrapped rows of a list item hang under its text; the indent itself is per-line.
+  '.cm-md-listline': {},
+  '.cm-md-quoteline': {
+    borderLeft: '2px solid var(--accent-line)',
+    paddingLeft: '0.7em',
+    marginLeft: '0.1em',
+  },
+  '.cm-md-codeline': {
+    fontFamily: 'var(--mono)',
+    fontSize: '0.85em',
+    background: 'var(--panel-2)',
+    paddingLeft: '0.6em',
+    paddingRight: '0.6em',
+  },
 });

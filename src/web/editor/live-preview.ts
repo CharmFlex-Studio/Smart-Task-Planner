@@ -39,11 +39,16 @@ export interface PreviewRange {
     | 'heading'
     | 'quote'
     | 'bullet'
-    | 'checkbox';
+    | 'checkbox'
+    | 'line';
   /** Heading level, when kind is 'heading'. */
   level?: number;
   /** Whether the box is ticked, when kind is 'checkbox'. */
   checked?: boolean;
+  /** Class for a whole-line decoration, when kind is 'line'. */
+  lineClass?: string;
+  /** Inline style for a whole-line decoration — the hanging indent, which is per-line. */
+  style?: string;
 }
 
 /** Inline marks that are pure syntax and carry no meaning once the effect is visible. */
@@ -89,9 +94,57 @@ export function previewRanges(state: EditorState): PreviewRange[] {
     return line >= active.from && line <= active.to;
   };
 
+  /**
+   * Hang the wrapped rows of a list item under its text instead of back at the margin.
+   *
+   * A negative text-indent cancelled by an equal padding does that, and it has to be
+   * per-line because the amount depends on how deep the item is nested. In ems rather
+   * than ch because the editor is set in a proportional face, where a character has no
+   * fixed width — so this lines up by eye rather than exactly, which is the best a
+   * proportional font allows.
+   */
+  const hang = (line: { from: number; text: string }, extra = 0) => {
+    const indent = /^[ \t]*/.exec(line.text)![0].replace(/\t/g, '  ').length;
+    const em = (indent / 2) * 1.4 + 1.6 + extra;
+    out.push({
+      from: line.from,
+      to: line.from,
+      kind: 'line',
+      lineClass: 'cm-md-listline',
+      style: `padding-left:${em}em;text-indent:-${em}em`,
+    });
+  };
+
   syntaxTree(state).iterate({
     enter(node) {
       const name = node.name;
+
+      // Whole-line treatments. Applied per line so they survive wrapping, which is where
+      // the block-level look actually has to hold up.
+      if (name === 'ListItem') {
+        const line = state.doc.lineAt(node.from);
+        hang(line);
+        return;
+      }
+      if (name === 'Blockquote') {
+        for (let p = node.from; p <= node.to; ) {
+          const line = state.doc.lineAt(p);
+          out.push({ from: line.from, to: line.from, kind: 'line', lineClass: 'cm-md-quoteline' });
+          if (line.to >= node.to) break;
+          p = line.to + 1;
+        }
+        out.push({ from: node.from, to: node.to, kind: 'quote' });
+        return;
+      }
+      if (name === 'FencedCode') {
+        for (let p = node.from; p <= node.to; ) {
+          const line = state.doc.lineAt(p);
+          out.push({ from: line.from, to: line.from, kind: 'line', lineClass: 'cm-md-codeline' });
+          if (line.to >= node.to) break;
+          p = line.to + 1;
+        }
+        return;
+      }
 
       if (STYLED[name]) {
         out.push({ from: node.from, to: node.to, kind: STYLED[name]! });
@@ -113,11 +166,6 @@ export function previewRanges(state: EditorState): PreviewRange[] {
       const heading = /^ATXHeading(\d)$/.exec(name);
       if (heading) {
         out.push({ from: node.from, to: node.to, kind: 'heading', level: Number(heading[1]) });
-        return;
-      }
-
-      if (name === 'Blockquote') {
-        out.push({ from: node.from, to: node.to, kind: 'quote' });
         return;
       }
 
@@ -143,6 +191,8 @@ export function previewRanges(state: EditorState): PreviewRange[] {
         return;
       }
 
+      if (name === 'CodeMark' && node.node.parent?.name === 'FencedCode') return;
+
       if (HIDDEN_MARKS.has(name) && !onActiveLine(node.from)) {
         // A line marker takes its trailing space with it, or the text it introduces stays
         // indented by one column and the paragraph does not line up with its neighbours.
@@ -157,36 +207,75 @@ export function previewRanges(state: EditorState): PreviewRange[] {
   return out.sort((a, b) => a.from - b.from || a.to - b.to);
 }
 
-/**
- * A glyph standing in for markup. Not an input: this is an editor, and a control that
- * swallows clicks inside editable text is a worse trade than typing the x yourself. The
- * reading view is where boxes are clickable.
- */
-class GlyphWidget extends WidgetType {
-  constructor(
-    private readonly glyph: string,
-    private readonly cls: string,
-  ) {
-    super();
-  }
-  override eq(other: GlyphWidget) {
-    return other.glyph === this.glyph && other.cls === this.cls;
+/** The bullet standing in for `-`. Decoration only; nothing to click. */
+class BulletWidget extends WidgetType {
+  override eq() {
+    return true;
   }
   toDOM() {
     const span = document.createElement('span');
-    span.className = this.cls;
-    span.textContent = this.glyph;
+    span.className = 'cm-md-bullet';
+    span.textContent = '\u2022\u2003';
     span.setAttribute('aria-hidden', 'true');
     return span;
   }
+}
+
+/**
+ * A checkbox you can actually tick.
+ *
+ * Clicking rewrites the three characters of the marker in the document, which is the same
+ * edit typing the x would make — so it goes through undo, through the save, and onto disk
+ * as those three bytes and nothing else. `ignoreEvent` returning true is what stops
+ * CodeMirror treating the click as a click into text and swallowing it.
+ */
+class CheckboxWidget extends WidgetType {
+  constructor(
+    private readonly checked: boolean,
+    private readonly at: number,
+  ) {
+    super();
+  }
+  override eq(other: CheckboxWidget) {
+    return other.checked === this.checked && other.at === this.at;
+  }
+  toDOM(view: EditorView) {
+    const box = document.createElement('span');
+    box.className = this.checked ? 'cm-md-box on' : 'cm-md-box';
+    box.textContent = this.checked ? '\u2611\u2003' : '\u2610\u2003';
+    box.setAttribute('role', 'checkbox');
+    box.setAttribute('aria-checked', String(this.checked));
+    box.tabIndex = 0;
+
+    const toggle = () => {
+      // Re-read rather than trusting the position this widget was built with: the document
+      // may have moved on since, and rewriting the wrong three characters would be worse
+      // than doing nothing.
+      const here = view.state.doc.sliceString(this.at, this.at + 3);
+      if (!/^\[[ xX]\]$/.test(here)) return;
+      view.dispatch({
+        changes: { from: this.at, to: this.at + 3, insert: /x/i.test(here) ? '[ ]' : '[x]' },
+      });
+    };
+
+    box.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // keep focus and the selection where they were
+      toggle();
+    });
+    box.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        toggle();
+      }
+    });
+    return box;
+  }
   override ignoreEvent() {
-    return false;
+    return true;
   }
 }
 
-const BULLET = Decoration.replace({ widget: new GlyphWidget('•\u2003', 'cm-md-bullet') });
-const BOX_OFF = Decoration.replace({ widget: new GlyphWidget('\u2610\u2003', 'cm-md-box') });
-const BOX_ON = Decoration.replace({ widget: new GlyphWidget('\u2611\u2003', 'cm-md-box on') });
+const BULLET = Decoration.replace({ widget: new BulletWidget() });
 
 const MARK = {
   strong: Decoration.mark({ class: 'cm-md-strong' }),
@@ -202,11 +291,30 @@ const HIDE = Decoration.replace({});
 function build(state: EditorState): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
   for (const r of previewRanges(state)) {
+    if (r.kind === 'line') {
+      // Line decorations are zero-length by definition — they attach to a line rather
+      // than cover any text — so they must be added before the empty-range guard below,
+      // which would otherwise drop every one of them.
+      builder.add(
+        r.from,
+        r.from,
+        Decoration.line({
+          class: r.lineClass!,
+          ...(r.style ? { attributes: { style: r.style } } : {}),
+        }),
+      );
+      continue;
+    }
     if (r.from === r.to) continue;
     if (r.kind === 'hide') builder.add(r.from, r.to, HIDE);
     else if (r.kind === 'bullet') builder.add(r.from, r.to, BULLET);
-    else if (r.kind === 'checkbox') builder.add(r.from, r.to, r.checked ? BOX_ON : BOX_OFF);
-    else if (r.kind === 'heading') {
+    else if (r.kind === 'checkbox') {
+      builder.add(
+        r.from,
+        r.to,
+        Decoration.replace({ widget: new CheckboxWidget(!!r.checked, r.from) }),
+      );
+    } else if (r.kind === 'heading') {
       builder.add(r.from, r.to, Decoration.mark({ class: `cm-md-h${r.level ?? 1}` }));
     } else builder.add(r.from, r.to, MARK[r.kind]);
   }

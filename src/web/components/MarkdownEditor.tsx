@@ -16,6 +16,7 @@ import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/vi
 import { history, historyKeymap, defaultKeymap } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { livePreview } from '../editor/live-preview.js';
+import { continuation, shiftIndent } from '../editor/list-commands.js';
 import { editorTheme } from '../editor/theme.js';
 import { applyWrap, applyLinePrefix, type Selection } from '../markdown-edit.js';
 
@@ -75,6 +76,51 @@ export function MarkdownEditor({
       history(),
       keymap.of([
         {
+          // Enter carries a list on, and a second Enter on an empty item ends it —
+          // which is how everyone leaves a list.
+          key: 'Enter',
+          run: (v) => {
+            const { from, to } = v.state.selection.main;
+            if (from !== to) return false;
+            const line = v.state.doc.lineAt(from);
+            const next = continuation(line.text);
+            if (!next) return false;
+            if ('clearLine' in next) {
+              v.dispatch({
+                changes: { from: line.from, to: line.to, insert: '' },
+                selection: { anchor: line.from },
+              });
+              return true;
+            }
+            v.dispatch({
+              changes: { from, to, insert: next.insert },
+              selection: { anchor: from + next.insert.length },
+              scrollIntoView: true,
+            });
+            return true;
+          },
+        },
+        {
+          key: 'Tab',
+          run: (v) => {
+            const line = v.state.doc.lineAt(v.state.selection.main.head);
+            const shifted = shiftIndent(line.text, 1);
+            if (shifted === null) return false;
+            v.dispatch({ changes: { from: line.from, to: line.to, insert: shifted } });
+            return true;
+          },
+        },
+        {
+          key: 'Shift-Tab',
+          run: (v) => {
+            const line = v.state.doc.lineAt(v.state.selection.main.head);
+            const shifted = shiftIndent(line.text, -1);
+            if (shifted === null) return false;
+            v.dispatch({ changes: { from: line.from, to: line.to, insert: shifted } });
+            return true;
+          },
+        },
+        {
           key: 'Mod-Enter',
           run: () => {
             latest.current.onCommit?.();
@@ -104,7 +150,14 @@ export function MarkdownEditor({
     ];
 
     const v = new EditorView({
-      state: EditorState.create({ doc: value, extensions }),
+      state: EditorState.create({
+        doc: value,
+        // Land at the end, not the top. Focusing line 1 would reveal that line's markers
+        // the instant the editor opens, which is the worst possible first impression of
+        // something whose whole point is hiding them.
+        selection: { anchor: value.length },
+        extensions,
+      }),
       parent: host.current,
     });
     view.current = v;
