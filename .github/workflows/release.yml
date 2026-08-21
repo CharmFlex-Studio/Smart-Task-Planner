@@ -8,6 +8,9 @@ name: Release
 # the version in package.json, so the whole thing is idempotent and safe to re-run.
 #
 # Pushing a v* tag does the same, for when a release should be cut from an exact commit.
+# Running it by hand builds everything and releases nothing unless the "release" box is
+# ticked, so there is a way to inspect a build before committing to a version — and a way
+# to retry a release that failed for a reason outside this repository.
 #
 # npm is published to with TRUSTED PUBLISHING: no token, no secret. The job mints a
 # short-lived OIDC token that npm verifies against a publisher configured on the package,
@@ -25,7 +28,11 @@ on:
     branches: [main]
     tags: ['v*']
   workflow_dispatch:
-    # A dry run: builds and attaches the zip to the run, releases nothing.
+    inputs:
+      release:
+        description: 'Publish to npm and create the release. Leave off for a dry run.'
+        type: boolean
+        default: false
 
 permissions:
   contents: write   # create the tag, the release, and upload its asset
@@ -71,9 +78,9 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG"         >> "$GITHUB_OUTPUT"
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.release }}" != "true" ]; then
             echo "should_release=false" >> "$GITHUB_OUTPUT"
-            echo "Manual run: building only, releasing nothing."
+            echo "Manual run without the release box ticked: building only."
             exit 0
           fi
 
@@ -208,6 +215,7 @@ jobs:
           fi
 
       - name: Create the release
+        id: create
         if: steps.decide.outputs.should_release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -267,3 +275,39 @@ jobs:
 
           echo "Released $TAG"
           echo "Installer: ${{ github.server_url }}/${{ github.repository }}/releases/latest/download/watsmytask-installer.zip"
+
+      # A skipped release looks identical to a successful one from the outside: a green
+      # tick and an artifact. Say which it was, where anyone actually looks. Last, and
+      # reading the release step's real outcome, so it reports rather than predicts.
+      - name: Summarise what this run did
+        if: always() && steps.decide.outputs.version != ''
+        run: |
+          set -euo pipefail
+          V="${{ steps.decide.outputs.version }}"
+          {
+            if [ "${{ steps.create.outcome }}" = "success" ]; then
+              echo "## Released watsmytask $V"
+              echo
+              echo "- npm: https://www.npmjs.com/package/watsmytask/v/$V"
+              echo "- Installer: ${{ github.server_url }}/${{ github.repository }}/releases/latest/download/watsmytask-installer.zip"
+            elif [ "${{ steps.decide.outputs.should_release }}" = "true" ]; then
+              echo "## watsmytask $V was NOT released"
+              echo
+              echo "This run meant to release and did not get there. Nothing was published"
+              echo "and no release was created, so the version is still free to retry."
+              echo "See the failed step above for what stopped it."
+            else
+              echo "## Nothing was released"
+              echo
+              echo "Built watsmytask $V and attached the zip to this run. **No npm publish"
+              echo "and no GitHub release.**"
+              echo
+              if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+                echo "This was a manual run without the **release** box ticked."
+                echo "Re-run it with that box ticked to publish."
+              else
+                echo "A release for \`v$V\` already exists. Bump the version in"
+                echo "\`package.json\` to ship something new."
+              fi
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -137,8 +137,14 @@ Bump `version` in `package.json` and merge to `main`. That is the whole procedur
 GitHub Release with `watsmytask-installer.zip` attached. Merges that do not change the
 version do nothing: it checks whether a release already exists for the version in
 `package.json`, so it is idempotent and safe to re-run. Pushing a `v*` tag does the same
-for an exact commit, and running the workflow by hand builds everything without releasing
-anything — a dry run whose zip you can download from the run.
+for an exact commit.
+
+Running it by hand from the Actions tab is a **dry run** unless you tick the **release**
+box: it builds everything and attaches the zip to the run, publishing nothing. Tick the
+box to publish — useful for retrying a release that failed for a reason outside this
+repository. Every run writes a summary saying which of those happened, because a skipped
+release and a successful one otherwise look identical from the outside: a green tick and
+an artifact.
 
 Publishing to npm uses **trusted publishing** — no token and no secret in this
 repository. The job mints a short-lived OIDC token, npm verifies it against a publisher
