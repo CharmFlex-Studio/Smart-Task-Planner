@@ -4,7 +4,7 @@ What changed for someone using watsmytask. The release workflow reads the sectio
 the version being released and puts it in the release notes, so a version with no section
 here ships without a "what's new" — keep it up to date as part of the version bump.
 
-## 0.4.1
+## 0.4.2
 
 **Attach files and images** to a description or a comment. Paste one, drop one in, or use
 the paperclip. Images appear in place; anything else becomes a link you can click.
@@ -19,17 +19,19 @@ Only ordinary image types are ever shown in place. Everything else — including
 inline from this origin runs where the app runs, and a vault can be shared or synced by
 someone who is not you.
 
+**Checkboxes in a comment tick too**, the same as ones in a description. They were
+read-only because there was no write path for a log entry; adding one is what made
+comments editable, and leaving them read-only after that was a difference nobody could
+have explained.
+
+## 0.4.1
+
 
 **A due date can carry a time.** Leave it off and nothing changes — a task due *on* a day
 is not late until the day is over. Set one and it is late a minute after: something due at
 14:00 shows "Overdue by 1 hour" rather than waiting for midnight to notice. The time is
 optional everywhere and never defaulted, because defaulting it to midnight would turn
 every date into a deadline that expires the moment the day starts.
-
-**Checkboxes in a comment tick too**, the same as ones in a description. They were
-read-only because there was no write path for a log entry; adding one is what made
-comments editable, and leaving them read-only after that was a difference nobody could
-have explained.
 
 **Comments can be edited and deleted.** Hover a comment for the controls; deleting asks
 first. An edit changes the wording and keeps the comment's own timestamp, because the
