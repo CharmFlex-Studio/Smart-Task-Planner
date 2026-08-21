@@ -24,8 +24,24 @@ const FIXED_WIDTH: Record<number, number> = {
   0: 1, 1: 1, 2: 2, 3: 2, 4: 4, 5: 4, 6: 4, 7: 1, 10: 8, 11: 8, 12: 8,
 };
 
-/** Enough for the header of any model worth running; the tensors sit far past it. */
-const HEADER_BYTES = 32 * 1024 * 1024;
+/**
+ * How much of the file to read, growing only when the header turns out to be bigger.
+ *
+ * Most models keep everything we want inside the first megabyte. A big vocabulary pushes
+ * it further — Gemma's 262k tokens put the chat template about 15MB in — but reading 32MB
+ * for every model on every listing, to answer a question whose answer never changes, is a
+ * lot of allocation and disk on a machine that may already be holding a model in memory.
+ * So: start small, grow only if the walk runs out of data, and stop at a sane ceiling.
+ */
+const READ_STEPS = [256 * 1024, 4 * 1024 * 1024, 24 * 1024 * 1024] as const;
+
+/**
+ * Remembered per file, keyed on what would change if the file changed.
+ *
+ * The template inside a .gguf is fixed for the life of that file, and the listing is
+ * rebuilt every time the settings page is opened. Reading it once is enough.
+ */
+const cache = new Map<string, { size: number; mtimeMs: number; info: GgufInfo | null }>();
 
 export interface GgufInfo {
   architecture?: string;
@@ -34,6 +50,34 @@ export interface GgufInfo {
 
 /** Read the metadata block. Returns null for anything that is not a readable GGUF. */
 export async function readGgufInfo(file: string): Promise<GgufInfo | null> {
+  let stat;
+  try {
+    stat = await fs.stat(file);
+  } catch {
+    return null;
+  }
+  const hit = cache.get(file);
+  if (hit && hit.size === stat.size && hit.mtimeMs === stat.mtimeMs) return hit.info;
+
+  const info = await readHeader(file, stat.size);
+  cache.set(file, { size: stat.size, mtimeMs: stat.mtimeMs, info });
+  return info;
+}
+
+async function readHeader(file: string, fileSize: number): Promise<GgufInfo | null> {
+  for (const step of READ_STEPS) {
+    const want = Math.min(step, fileSize);
+    const info = await readWindow(file, want);
+    // `undefined` means the walk ran out of data — try a bigger window. `null` means the
+    // file is not a GGUF at all, which a bigger window will not change.
+    if (info !== undefined) return info;
+    if (want >= fileSize) break;
+  }
+  return null;
+}
+
+/** null: not a GGUF. undefined: the window was too small. Otherwise: what was found. */
+async function readWindow(file: string, size: number): Promise<GgufInfo | null | undefined> {
   let handle;
   try {
     handle = await fs.open(file, 'r');
@@ -41,8 +85,8 @@ export async function readGgufInfo(file: string): Promise<GgufInfo | null> {
     return null;
   }
   try {
-    const buf = Buffer.alloc(HEADER_BYTES);
-    const { bytesRead } = await handle.read(buf, 0, HEADER_BYTES, 0);
+    const buf = Buffer.alloc(size);
+    const { bytesRead } = await handle.read(buf, 0, size, 0);
     if (bytesRead < 24 || buf.toString('ascii', 0, 4) !== 'GGUF') return null;
 
     let at = 4;
@@ -100,8 +144,8 @@ export async function readGgufInfo(file: string): Promise<GgufInfo | null> {
     }
     return info;
   } catch {
-    // A header we cannot walk tells us nothing, which is different from telling us "no".
-    return null;
+    // Ran out of window mid-walk. Not "no" — "ask again with more".
+    return undefined;
   } finally {
     await handle.close();
   }

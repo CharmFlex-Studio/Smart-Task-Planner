@@ -4,6 +4,26 @@ What changed for someone using watsmytask. The release workflow reads the sectio
 the version being released and puts it in the release notes, so a version with no section
 here ships without a "what's new" — keep it up to date as part of the version bump.
 
+## 0.5.2
+
+**Fixes the model list hanging on "Loading models…".** 0.5.1 started reading each model's
+chat template to find out whether it can use tools, and did it by pulling 32 MB off disk
+per model, every time the settings page opened. On a machine already holding a model in
+memory that is enough to stall the page. It now reads a quarter of a megabyte and asks for
+more only if the header is genuinely bigger, and remembers the answer — the template inside
+a file never changes. First look 130 ms, every look after that instant.
+
+**Fixes llama.cpp aborting when the app is stopped with Ctrl-C.** The model runs as a child
+in the same process group, so a Ctrl-C in the terminal reached it at the same moment it
+reached us — and then we sent it a second signal, which llama.cpp treats as "terminating
+immediately" and which tripped an assertion in its Metal backend on the way out. It is now
+given a moment to leave on its own, and signalled only if it has not.
+
+**Fixes an update needing a hard reload.** The page naming the app's scripts was cacheable
+while the scripts themselves were immutable, so a browser could hold yesterday's page and
+ask for a script the new version does not have. Nothing would start, which looked like the
+update breaking rather than a stale page.
+
 ## 0.5.1
 
 **The assistant reaches for its tools far more readily.** It used to answer from the

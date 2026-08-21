@@ -86,6 +86,46 @@ describe('readGgufInfo', () => {
  * model without cannot, and telling someone otherwise sends them to download gigabytes of
  * something that will not do the job.
  */
+describe('reading is proportionate and remembered', () => {
+  it('grows the window when the header is bigger than the first read', async () => {
+    // Padding before the template pushes it past the smallest step, so the reader has to
+    // ask again with more — a big vocabulary does exactly this in a real model.
+    const padding = 'x'.repeat(400 * 1024);
+    await withFile(
+      ggufWith({ 'general.name': padding, 'tokenizer.chat_template': '{% if tools %}ok' }),
+      async (file) => {
+        const info = await readGgufInfo(file);
+        expect(info?.chatTemplate).toContain('tools');
+      },
+    );
+  });
+
+  it('does not read the file again when nothing about it changed', async () => {
+    await withFile(ggufWith({ 'tokenizer.chat_template': 'first' }), async (file) => {
+      expect((await readGgufInfo(file))?.chatTemplate).toBe('first');
+      const t0 = process.hrtime.bigint();
+      await readGgufInfo(file);
+      const secondCall = Number(process.hrtime.bigint() - t0) / 1e6;
+      // A cache hit is a stat, not a read: well under a millisecond.
+      expect(secondCall).toBeLessThan(5);
+    });
+  });
+
+  it('reads it again when the file has been replaced', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'gguf-'));
+    const file = path.join(dir, 'model.gguf');
+    try {
+      await fs.writeFile(file, ggufWith({ 'tokenizer.chat_template': 'first' }));
+      expect((await readGgufInfo(file))?.chatTemplate).toBe('first');
+      // A different size, which is what the cache is keyed on alongside mtime.
+      await fs.writeFile(file, ggufWith({ 'tokenizer.chat_template': 'second version' }));
+      expect((await readGgufInfo(file))?.chatTemplate).toBe('second version');
+    } finally {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('toolSupportFromTemplate', () => {
   it('says yes when the template has somewhere to put a tool call', () => {
     expect(toolSupportFromTemplate('{% if tools %}{{ tools }}{% endif %}')).toBe('yes');
