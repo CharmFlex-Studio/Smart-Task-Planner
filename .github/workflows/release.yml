@@ -1,0 +1,126 @@
+name: Release
+
+# Cut a release: test, build, publish to npm, then attach the installer zip to a
+# GitHub Release.
+#
+# Deliberately ONE job with linear steps rather than three parallel ones, because the
+# order carries a guarantee. The installers inside the zip run `npm install watsmytask@latest`,
+# so npm has to have the new version *before* the release that advertises it exists.
+# Split across jobs that ordering becomes a `needs:` graph nobody re-reads; here it is
+# just the order of the steps.
+#
+# Releasing is a tag push. That is the deliberate act — merging to main does not ship
+# anything. Run the workflow by hand to build and inspect the zip without publishing.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    # A dry run: everything except npm publish and the release itself. The zip lands in
+    # the run's artifacts so you can download and open it before committing to a version.
+
+permissions:
+  contents: write   # create the release and upload its asset
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check the tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG."
+            echo "Bump package.json to $TAG, or tag v$PKG instead."
+            exit 1
+          fi
+          echo "Releasing watsmytask $PKG"
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Build the installer zip
+        run: ./setup/build-release.sh
+
+      - name: Pack the npm tarball
+        run: npm pack --pack-destination release
+
+      # Keep the artefacts on every run, tagged or not — this is what makes the manual
+      # dispatch useful as a dry run.
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: watsmytask-release
+          path: release/
+          retention-days: 14
+
+      # --- everything past this point only happens for a real tag ------------------
+
+      - name: Publish to npm
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::warning::NPM_TOKEN is not set — skipping the npm publish."
+            echo "The installers fetch watsmytask@latest, so they will keep installing"
+            echo "the previously published version until this is published by hand."
+            exit 0
+          fi
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "watsmytask@$VERSION" version >/dev/null 2>&1; then
+            echo "watsmytask@$VERSION is already on npm — nothing to publish."
+            exit 0
+          fi
+          npm publish --access public
+
+      - name: Create the GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          NOTES=".github/release-notes.md"
+
+          # The zip name is stable on purpose: the homepage links to
+          # /releases/latest/download/watsmytask-installer.zip, which only resolves
+          # while the asset keeps exactly this name.
+          if [ ! -f release/watsmytask-installer.zip ]; then
+            echo "::error::release/watsmytask-installer.zip is missing."
+            exit 1
+          fi
+
+          if [ -f "$NOTES" ]; then
+            sed "s/__VERSION__/$VERSION/g" "$NOTES" > /tmp/notes.md
+          else
+            echo "watsmytask $VERSION" > /tmp/notes.md
+          fi
+
+          gh release create "$GITHUB_REF_NAME" \
+            --title "watsmytask $VERSION" \
+            --notes-file /tmp/notes.md \
+            release/watsmytask-installer.zip

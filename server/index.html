@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>watsmytask</title>
+<meta name="description" content="A task planner whose database is a folder of markdown files. Local, offline, yours." />
+<meta name="color-scheme" content="light dark" />
+<script>document.documentElement.className += " js";</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap" />
+<style>
+/* ------------------------------------------------------------------ tokens
+   One violet accent, carried over from the app itself so the page and the
+   product read as one thing. The complete light palette lives on bare :root;
+   dark redefines only tokens, twice, so both the OS setting and an explicit
+   choice resolve. No colour is ever declared only inside a media block. */
+:root {
+  --ground: #f7f5fc;
+  --ground-2: #efebf9;
+  --surface: #ffffff;
+  --surface-2: #f4f1fb;
+  --ink: #191233;
+  --muted: #5b4d80;
+  --faint: #8478a6;
+  --line: #e5dff3;
+  --line-2: #d3c9ec;
+  --accent: #6b3fd4;
+  --accent-ink: #ffffff;
+  --accent-soft: #ece5fd;
+  --accent-line: #d5c8fa;
+  --lit: #fdf3c8;
+  --lit-line: #e0bf3d;
+  --add: #14664a;
+  --add-bg: #dff7ec;
+  --del: #b02a20;
+  --del-bg: #fde9e7;
+  --amber: #855100;
+  --amber-bg: #fcf0d4;
+  --shadow: 0 1px 2px rgba(45,22,92,.07), 0 10px 34px -18px rgba(45,22,92,.28);
+  --shadow-lift: 0 2px 4px rgba(45,22,92,.09), 0 22px 50px -26px rgba(45,22,92,.4);
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --r: 10px;
+  --measure: 34rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #14111f;
+    --ground-2: #191527;
+    --surface: #1c1830;
+    --surface-2: #241e3a;
+    --ink: #f2eefb;
+    --muted: #b6a9d6;
+    --faint: #8d80b2;
+    --line: #2e2745;
+    --line-2: #453a63;
+    --accent: #b191ff;
+    --accent-ink: #1a1030;
+    --accent-soft: #2f2456;
+    --accent-line: #493a75;
+    --lit: #453714;
+    --lit-line: #c79a2b;
+    --add: #7fe3bb;
+    --add-bg: #123c2b;
+    --del: #ff9d92;
+    --del-bg: #461915;
+    --amber: #f0c65c;
+    --amber-bg: #40300c;
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 12px 36px -18px rgba(0,0,0,.8);
+    --shadow-lift: 0 2px 6px rgba(0,0,0,.55), 0 24px 54px -26px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #14111f;
+  --ground-2: #191527;
+  --surface: #1c1830;
+  --surface-2: #241e3a;
+  --ink: #f2eefb;
+  --muted: #b6a9d6;
+  --faint: #8d80b2;
+  --line: #2e2745;
+  --line-2: #453a63;
+  --accent: #b191ff;
+  --accent-ink: #1a1030;
+  --accent-soft: #2f2456;
+  --accent-line: #493a75;
+  --lit: #453714;
+  --lit-line: #c79a2b;
+  --add: #7fe3bb;
+  --add-bg: #123c2b;
+  --del: #ff9d92;
+  --del-bg: #461915;
+  --amber: #f0c65c;
+  --amber-bg: #40300c;
+  --shadow: 0 1px 2px rgba(0,0,0,.5), 0 12px 36px -18px rgba(0,0,0,.8);
+  --shadow-lift: 0 2px 6px rgba(0,0,0,.55), 0 24px 54px -26px rgba(0,0,0,.9);
+}
+
+/* ------------------------------------------------------------------- base */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { font-family: var(--mono); font-weight: 600; text-wrap: balance; letter-spacing: -.02em; margin: 0; }
+p { margin: 0; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+.wrap { width: min(100% - 2.5rem, 68rem); margin-inline: auto; }
+.prose { max-width: var(--measure); display: flex; flex-direction: column; gap: 1rem; }
+.eyebrow {
+  font-family: var(--mono); font-size: .72rem; font-weight: 500;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--accent); margin: 0;
+}
+.lede { font-size: 1.06rem; color: var(--muted); }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------------ chrome */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in srgb, var(--ground) 86%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-in { display: flex; align-items: center; gap: 1rem; height: 58px; }
+.brand {
+  font-family: var(--mono); font-weight: 600; font-size: 1rem;
+  letter-spacing: -.03em; color: var(--ink); text-decoration: none;
+  display: inline-flex; align-items: center; gap: .5rem;
+}
+.brand .dot {
+  width: 9px; height: 9px; border-radius: 2px; background: var(--accent);
+  display: inline-block;
+}
+.topbar nav { margin-left: auto; display: flex; align-items: center; gap: 1.5rem; }
+.topbar nav a {
+  font-size: .875rem; color: var(--muted); text-decoration: none;
+}
+.topbar nav a:hover { color: var(--ink); }
+.theme-btn {
+  font: inherit; font-size: .8rem; font-family: var(--mono);
+  background: var(--surface); color: var(--muted);
+  border: 1px solid var(--line-2); border-radius: 6px;
+  padding: .3rem .6rem; cursor: pointer; line-height: 1.4;
+}
+.theme-btn:hover { color: var(--ink); border-color: var(--accent-line); }
+@media (max-width: 720px) { .topbar nav .hide-sm { display: none; } }
+
+/* -------------------------------------------------------------------- hero */
+.hero { padding: clamp(3.5rem, 9vw, 7rem) 0 clamp(2.5rem, 6vw, 4.5rem); }
+.hero h1 {
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  line-height: 1.08; letter-spacing: -.04em; margin-bottom: 1.4rem;
+  max-width: 24ch;
+}
+.hero h1 .soft { color: var(--muted); }
+.hero-lede { font-size: clamp(1.06rem, 2.2vw, 1.2rem); color: var(--muted); max-width: 40rem; }
+.hero-lede strong { color: var(--ink); font-weight: 500; }
+
+.cta { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-top: 2rem; }
+.btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  font-family: var(--mono); font-size: .9rem; font-weight: 500;
+  padding: .68rem 1.1rem; border-radius: 8px; text-decoration: none;
+  border: 1px solid transparent; cursor: pointer; line-height: 1.3;
+}
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-ghost { background: var(--surface); color: var(--ink); border-color: var(--line-2); }
+.btn-ghost:hover { border-color: var(--accent-line); }
+
+.copyline {
+  display: flex; align-items: center; gap: .6rem;
+  font-family: var(--mono); font-size: .9rem;
+  background: var(--surface); border: 1px solid var(--line-2);
+  border-radius: 8px; padding: .55rem .55rem .55rem .85rem;
+}
+.copyline code { color: var(--ink); }
+.copyline .prompt { color: var(--faint); }
+.copy-btn {
+  font: inherit; font-size: .78rem; font-family: var(--mono);
+  background: var(--surface-2); color: var(--muted);
+  border: 1px solid var(--line); border-radius: 5px;
+  padding: .22rem .5rem; cursor: pointer; line-height: 1.4;
+}
+.copy-btn:hover { color: var(--ink); border-color: var(--accent-line); }
+.copy-btn[data-copied="yes"] { color: var(--add); border-color: var(--add); }
+
+.hero-note { margin-top: 1.1rem; font-size: .875rem; color: var(--faint); }
+.hero-note code { font-family: var(--mono); font-size: .95em; }
+
+/* ---------------------------------------------------- the thesis: file+card */
+.thesis { padding-bottom: clamp(3rem, 7vw, 5.5rem); }
+.thesis-grid {
+  display: grid; gap: 1.25rem;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+@media (min-width: 900px) {
+  .thesis-grid { grid-template-columns: 1.08fr auto 1fr; gap: 0; }
+}
+.thesis-caption {
+  display: flex; align-items: center; gap: .6rem;
+  font-family: var(--mono); font-size: .74rem; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--faint); margin-bottom: .7rem;
+}
+.thesis-caption .rule { flex: 1; height: 1px; background: var(--line); }
+
+/* the connective tissue between the two representations */
+.tether { display: none; }
+@media (min-width: 900px) {
+  .tether {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; align-self: stretch; padding: 0 1.5rem;
+    padding-top: 2rem;
+  }
+  .tether .line { flex: 1; width: 1px; background: linear-gradient(var(--line), var(--line-2), var(--line)); }
+  .tether .same {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--faint);
+    background: var(--ground); padding: .5rem 0; writing-mode: vertical-rl;
+    transform: rotate(180deg);
+  }
+}
+
+/* the markdown file */
+.file {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden;
+}
+.file-head {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .6rem .9rem; border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+  font-family: var(--mono); font-size: .78rem; color: var(--muted);
+}
+.file-head .path { color: var(--ink); }
+.file-body {
+  margin: 0; padding: 1rem .5rem 1.1rem;
+  font-family: var(--mono); font-size: .795rem; line-height: 1.85;
+  overflow-x: auto;
+}
+.file-body .row { display: block; padding: 0 .9rem; white-space: pre; border-left: 2px solid transparent; }
+.file-body .k { color: var(--accent); }
+.file-body .fence { color: var(--faint); }
+.file-body .txt { color: var(--muted); }
+.file-body .val { color: var(--ink); }
+
+/* linked highlighting — the interactive idea of the page */
+[data-link] { border-radius: 3px; transition: background-color .13s ease, border-color .13s ease; }
+.file-body .row[data-link] { cursor: default; }
+.file-body .row.lit { background: var(--lit); border-left-color: var(--lit-line); }
+.card .lit { background: var(--lit); box-shadow: 0 0 0 3px var(--lit); }
+@media (prefers-reduced-motion: reduce) { [data-link] { transition: none; } }
+
+/* the board card */
+.lane {
+  background: var(--ground-2); border: 1px solid var(--line);
+  border-radius: var(--r); padding: .8rem;
+  display: flex; flex-direction: column; gap: .7rem;
+}
+.lane-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--mono); font-size: .76rem; font-weight: 500;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+  padding: 0 .15rem;
+}
+.lane-head .count {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 20px; padding: .05rem .45rem; font-size: .72rem; color: var(--faint);
+}
+.card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; padding: .8rem .85rem; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: .55rem;
+}
+.card-title { font-weight: 500; font-size: .95rem; line-height: 1.35; }
+.card-meta { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.chip {
+  font-family: var(--mono); font-size: .7rem; line-height: 1.6;
+  padding: .1rem .45rem; border-radius: 5px;
+  border: 1px solid var(--line-2); color: var(--muted); background: var(--surface-2);
+}
+.chip-due { color: var(--del); background: var(--del-bg); border-color: transparent; }
+.chip-mo { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
+.card-log {
+  font-size: .78rem; color: var(--faint); border-top: 1px dashed var(--line);
+  padding-top: .5rem; display: flex; gap: .4rem;
+}
+.card-log .when { font-family: var(--mono); color: var(--muted); flex: none; }
+.card-dim { opacity: .55; }
+
+/* ----------------------------------------------------------------- sections */
+section { padding: clamp(3rem, 7vw, 5.5rem) 0; border-top: 1px solid var(--line); }
+.spread { display: grid; gap: clamp(1.75rem, 4vw, 3.25rem); grid-template-columns: 1fr; align-items: center; }
+@media (min-width: 940px) {
+  .spread { grid-template-columns: 0.85fr 1.15fr; }
+  .spread.flip > .prose { order: 2; }
+}
+h2 { font-size: clamp(1.5rem, 3.1vw, 2rem); line-height: 1.15; }
+h3 { font-size: 1rem; letter-spacing: -.01em; }
+.body-copy { color: var(--muted); }
+.body-copy strong { color: var(--ink); font-weight: 500; }
+.body-copy code, .inline-code {
+  font-family: var(--mono); font-size: .88em;
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 4px; padding: .05em .32em; color: var(--ink);
+}
+
+/* my-work panel */
+.panel {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); box-shadow: var(--shadow-lift); overflow: hidden;
+}
+.panel-head {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .7rem .95rem; border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.panel-head .title { font-family: var(--mono); font-size: .8rem; font-weight: 500; }
+.panel-head .ws {
+  margin-left: auto; font-family: var(--mono); font-size: .72rem;
+  color: var(--accent); background: var(--accent-soft);
+  border: 1px solid var(--accent-line); border-radius: 20px; padding: .1rem .55rem;
+}
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); }
+.stat { padding: .8rem .5rem; text-align: center; border-right: 1px solid var(--line); }
+.stat:last-child { border-right: 0; }
+.stat .n { font-family: var(--mono); font-size: 1.3rem; font-weight: 600; line-height: 1.1; }
+.stat .l {
+  font-size: .68rem; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--faint); font-family: var(--mono);
+}
+.stat.warn .n { color: var(--amber); }
+.group { padding: .9rem .95rem; }
+.group + .group { border-top: 1px solid var(--line); }
+.group-h {
+  font-family: var(--mono); font-size: .72rem; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--faint); margin-bottom: .65rem;
+}
+.row-task {
+  display: flex; align-items: baseline; gap: .7rem;
+  padding: .45rem .1rem; border-bottom: 1px solid var(--line);
+}
+.row-task:last-child { border-bottom: 0; }
+.row-task .t { font-size: .9rem; flex: 1; min-width: 0; }
+.reason {
+  font-family: var(--mono); font-size: .72rem; flex: none;
+  padding: .08rem .45rem; border-radius: 5px;
+}
+.reason-red { color: var(--del); background: var(--del-bg); }
+.reason-amber { color: var(--amber); background: var(--amber-bg); }
+.reason-quiet { color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); }
+
+/* chat + diff */
+.chat { display: flex; flex-direction: column; gap: .8rem; padding: .95rem; }
+.bubble { max-width: 88%; font-size: .9rem; line-height: 1.55; }
+.bubble .who {
+  font-family: var(--mono); font-size: .68rem; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--faint); margin-bottom: .3rem;
+}
+.bubble-you { align-self: flex-end; text-align: right; }
+.bubble-you .msg {
+  background: var(--accent); color: var(--accent-ink);
+  padding: .5rem .8rem; border-radius: 10px 10px 3px 10px; display: inline-block; text-align: left;
+}
+.bubble-ai .msg {
+  background: var(--surface-2); border: 1px solid var(--line);
+  padding: .5rem .8rem; border-radius: 10px 10px 10px 3px; display: inline-block;
+}
+.proposal { border: 1px solid var(--accent-line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.proposal-h {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+  padding: .5rem .7rem; background: var(--accent-soft);
+  font-family: var(--mono); font-size: .74rem; color: var(--accent);
+  border-bottom: 1px solid var(--accent-line);
+}
+.proposal-h .file-name { color: var(--ink); }
+.diff { margin: 0; font-family: var(--mono); font-size: .755rem; line-height: 1.75; overflow-x: auto; padding: .5rem 0; }
+.diff .row { display: block; padding: 0 .7rem; white-space: pre; }
+.diff .add { background: var(--add-bg); color: var(--add); }
+.diff .del { background: var(--del-bg); color: var(--del); }
+.diff .ctx { color: var(--muted); }
+.diff .hunk { color: var(--faint); }
+.proposal-actions {
+  display: flex; gap: .5rem; padding: .55rem .7rem;
+  border-top: 1px solid var(--line); background: var(--surface-2);
+}
+.mini {
+  font-family: var(--mono); font-size: .76rem; font-weight: 500;
+  padding: .3rem .7rem; border-radius: 6px; border: 1px solid transparent; line-height: 1.4;
+}
+.mini-apply { background: var(--accent); color: var(--accent-ink); }
+.mini-discard { background: var(--surface); color: var(--muted); border-color: var(--line-2); }
+.guard {
+  display: flex; gap: .6rem; align-items: flex-start;
+  font-size: .82rem; color: var(--muted);
+  border-left: 2px solid var(--accent); padding: .1rem 0 .1rem .8rem;
+}
+
+/* tool split */
+.tools { display: grid; gap: .8rem; grid-template-columns: 1fr; }
+@media (min-width: 560px) { .tools { grid-template-columns: 1fr 1fr; } }
+.tool-box { border: 1px solid var(--line); border-radius: var(--r); padding: .95rem; background: var(--surface); }
+.tool-box h3 { font-size: .82rem; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin-bottom: .6rem; }
+.tool-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
+.tool-list li { font-family: var(--mono); font-size: .8rem; color: var(--ink); display: flex; gap: .5rem; align-items: baseline; }
+.tool-list .mark { color: var(--faint); flex: none; }
+.tool-out { margin-top: .7rem; padding-top: .6rem; border-top: 1px dashed var(--line); font-size: .78rem; color: var(--muted); }
+.tool-out strong { color: var(--ink); font-weight: 500; }
+
+/* workspaces / tree */
+.tree {
+  margin: 0; padding: 1rem; font-family: var(--mono); font-size: .795rem;
+  line-height: 1.8; overflow-x: auto; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r); box-shadow: var(--shadow);
+}
+.tree .dir { color: var(--accent); }
+.tree .note { color: var(--faint); }
+.tree .f { color: var(--ink); }
+
+/* feature grid */
+.feat { display: grid; gap: 1.5rem 2.25rem; grid-template-columns: 1fr; }
+@media (min-width: 720px) { .feat { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1000px) { .feat { grid-template-columns: repeat(3, 1fr); } }
+.feat > div { display: flex; flex-direction: column; gap: .45rem; }
+.feat h3 { font-size: .95rem; }
+.feat p { font-size: .9rem; color: var(--muted); }
+.feat .kbd {
+  font-family: var(--mono); font-size: .78rem;
+  border: 1px solid var(--line-2); border-bottom-width: 2px;
+  border-radius: 5px; padding: .05rem .35rem; background: var(--surface); color: var(--ink);
+}
+
+/* install */
+.install-grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+@media (min-width: 800px) { .install-grid { grid-template-columns: 1fr 1fr; } }
+.install-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 1.15rem; display: flex; flex-direction: column; gap: .7rem; box-shadow: var(--shadow);
+}
+.install-card h3 { font-size: 1rem; }
+.install-card .btn { align-self: flex-start; margin-top: auto; }
+.install-card p { font-size: .88rem; color: var(--muted); }
+.install-card ol { margin: 0; padding-left: 1.1rem; font-size: .88rem; color: var(--muted); display: flex; flex-direction: column; gap: .35rem; }
+.install-card ol strong { color: var(--ink); font-weight: 500; }
+.req { font-size: .82rem; color: var(--faint); margin-top: .2rem; }
+
+/* footer */
+footer { border-top: 1px solid var(--line); padding: 2.5rem 0 3.5rem; background: var(--ground-2); }
+.foot-in { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: baseline; justify-content: space-between; }
+.foot-in p { font-size: .85rem; color: var(--faint); }
+.foot-links { display: flex; gap: 1.25rem; }
+.foot-links a { font-size: .85rem; color: var(--muted); text-decoration: none; }
+.foot-links a:hover { color: var(--accent); }
+
+/* entrance — one orchestrated pass, disabled for reduced motion */
+html.js .rise { opacity: 0; transform: translateY(14px); }
+html.js .revealed .rise {
+  opacity: 1; transform: none;
+  transition: opacity .6s cubic-bezier(.2,.6,.2,1), transform .6s cubic-bezier(.2,.6,.2,1);
+}
+html.js .revealed .rise:nth-child(2) { transition-delay: .07s; }
+html.js .revealed .rise:nth-child(3) { transition-delay: .14s; }
+@media (prefers-reduced-motion: reduce) {
+  html.js .rise { opacity: 1; transform: none; }
+  html.js .revealed .rise { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a class="brand" href="#top"><span class="dot" aria-hidden="true"></span>watsmytask</a>
+    <nav>
+      <a class="hide-sm" href="#work">My work</a>
+      <a class="hide-sm" href="#chat">The chat</a>
+      <a class="hide-sm" href="#workspaces">Workspaces</a>
+      <a href="#install">Install</a>
+      <button class="theme-btn" id="theme" type="button" aria-label="Switch colour theme">theme</button>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ============================================================ hero -->
+  <div class="hero wrap">
+    <div class="prose" style="max-width: 46rem;">
+      <p class="eyebrow rise">Local-first task planner</p>
+      <h1 class="rise">Your tasks are files. <span class="soft">Not rows in somebody's database.</span></h1>
+      <p class="hero-lede rise">
+        watsmytask keeps every task as <strong>plain markdown in a folder you own</strong>.
+        Open it in Obsidian, edit it in vim, <code class="inline-code">grep</code> it, commit it
+        to git. Delete the app tomorrow and your work is still sitting there, readable.
+      </p>
+    </div>
+    <div class="cta rise">
+      <a class="btn btn-primary" href="#install">Install it</a>
+      <div class="copyline">
+        <span class="prompt" aria-hidden="true">$</span>
+        <code id="npx-cmd">npx watsmytask</code>
+        <button class="copy-btn" type="button" data-copy="npx watsmytask">copy</button>
+      </div>
+    </div>
+    <p class="hero-note">
+      Runs on <code>127.0.0.1</code>. No account, no cloud, no telemetry. The only time it
+      reaches the network is when you ask it to download an AI model.
+    </p>
+  </div>
+
+  <!-- ================================================== thesis: file = card -->
+  <div class="thesis wrap">
+    <div class="thesis-grid">
+      <div>
+        <p class="thesis-caption"><span>The file on disk</span><span class="rule"></span></p>
+        <div class="file">
+          <div class="file-head">
+            <span class="path">main/tasks/improve-korean-translation.md</span>
+          </div>
+          <pre class="file-body"><span class="row fence">---</span><span class="row" data-link="id"><span class="k">id:</span> <span class="val">01JQ8ZK3M4N5P6Q7R8S9T0V1W2</span></span><span class="row" data-link="title"><span class="k">title:</span> <span class="val">Improve Korean live translation</span></span><span class="row" data-link="status"><span class="k">status:</span> <span class="val">in-progress</span></span><span class="row"><span class="k">created:</span> <span class="val">2026-08-14T09:30:00+08:00</span></span><span class="row" data-link="updated"><span class="k">updated:</span> <span class="val">2026-08-20T21:31:33+08:00</span></span><span class="row" data-link="due"><span class="k">due:</span> <span class="val">2026-08-25</span></span><span class="row fence">---</span><span class="row"> </span><span class="row txt" data-link="desc">Live translation lags badly on mid-range</span><span class="row txt" data-link="desc">phones. Target is under 400 ms end to end</span><span class="row txt" data-link="desc">on a Pixel 6a.</span><span class="row"> </span><span class="row fence">## Log</span><span class="row"> </span><span class="row txt">- 2026-08-14 09:30 · note · Started</span><span class="row txt">  investigating translation delay</span><span class="row txt">- 2026-08-15 10:40 · note · Sentence</span><span class="row txt">  buffering adds ~600 ms</span><span class="row txt" data-link="log">- 2026-08-19 16:30 · note · Keeping two</span><span class="row txt" data-link="log">  previous segments as context</span></pre>
+        </div>
+      </div>
+
+      <div class="tether" aria-hidden="true">
+        <span class="line"></span>
+        <span class="same">the same task</span>
+        <span class="line"></span>
+      </div>
+
+      <div>
+        <p class="thesis-caption"><span>The board you work in</span><span class="rule"></span></p>
+        <div class="lane">
+          <div class="lane-head">
+            <span data-link="status">In Progress</span>
+            <span class="count tnum">3</span>
+          </div>
+          <article class="card">
+            <p class="card-title" data-link="title">Improve Korean live translation</p>
+            <div class="card-meta">
+              <span class="chip chip-due" data-link="due">Due in 5 days</span>
+              <span class="chip chip-mo" data-link="updated">moving</span>
+              <span class="chip" data-link="id">01JQ8ZK…</span>
+            </div>
+            <p class="card-log" data-link="log">
+              <span class="when">19 Aug</span>
+              <span>Keeping two previous segments as context</span>
+            </p>
+          </article>
+          <article class="card card-dim">
+            <p class="card-title">Payment integration</p>
+            <div class="card-meta">
+              <span class="chip">no due date</span>
+              <span class="chip">stalled</span>
+            </div>
+            <p class="card-log">
+              <span class="when">12 Aug</span>
+              <span>Waiting on the sandbox credentials</span>
+            </p>
+          </article>
+          <article class="card card-dim">
+            <p class="card-title">Rewrite the onboarding copy</p>
+            <div class="card-meta">
+              <span class="chip">Due in 12 days</span>
+              <span class="chip">moving</span>
+            </div>
+            <p class="card-log">
+              <span class="when">20 Aug</span>
+              <span>Second pass on the empty state</span>
+            </p>
+          </article>
+        </div>
+        <p class="hero-note" style="margin-top:.9rem;">
+          Hover either side — every field is the same field.
+          <strong style="color:var(--muted);font-weight:500;">moving</strong> and
+          <strong style="color:var(--muted);font-weight:500;">Due in 5 days</strong> are worked
+          out from the file when it is read, never written back into it.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== my work view -->
+  <section id="work">
+    <div class="wrap spread">
+      <div class="prose">
+        <p class="eyebrow">My work</p>
+        <h2>The screen that tells you where to start</h2>
+        <p class="body-copy">
+          Momentum, staleness and what needs attention are <strong>computed every time the
+          files are read</strong> — never stored. No cached signal can drift out of step with
+          your folder, and there is no migration to run when the rules change.
+        </p>
+        <p class="body-copy">
+          No model is consulted here. This grouping is plain arithmetic over dates and log
+          entries, so it is instant, correct with the network off, and identical every time
+          you load it.
+        </p>
+        <p class="body-copy">
+          Attention is given as <strong>words, not a score</strong>. "92" tells you nothing.
+          <span class="inline-code">Overdue by 2 days</span> tells you what to do.
+        </p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <span class="title">My work</span>
+          <span class="ws">main</span>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="n tnum">14</div><div class="l">open</div></div>
+          <div class="stat"><div class="n tnum">6</div><div class="l">done</div></div>
+          <div class="stat"><div class="n tnum">3</div><div class="l">today</div></div>
+          <div class="stat warn"><div class="n tnum">4</div><div class="l">stale</div></div>
+        </div>
+        <div class="group">
+          <p class="group-h">Needs attention</p>
+          <div class="row-task">
+            <span class="t">Ship the billing migration</span>
+            <span class="reason reason-red">Overdue by 2 days</span>
+          </div>
+          <div class="row-task">
+            <span class="t">Improve Korean live translation</span>
+            <span class="reason reason-amber">Due in 5 days</span>
+          </div>
+          <div class="row-task">
+            <span class="t">Payment integration</span>
+            <span class="reason reason-amber">No update for 9 days</span>
+          </div>
+        </div>
+        <div class="group">
+          <p class="group-h">Continue with</p>
+          <div class="row-task">
+            <span class="t">Rewrite the onboarding copy</span>
+            <span class="reason reason-quiet">moving</span>
+          </div>
+          <div class="row-task">
+            <span class="t">Audit the export endpoint</span>
+            <span class="reason reason-quiet">slowing</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================== chat -->
+  <section id="chat">
+    <div class="wrap spread flip">
+      <div class="prose">
+        <p class="eyebrow">The optional chat</p>
+        <h2>It proposes. You decide.</h2>
+        <p class="body-copy">
+          Ask a local model to tidy up, and it does not touch your disk. Every write it
+          attempts comes back as <strong>a diff of a specific file</strong>, with Apply and
+          Discard beside it. Nothing has changed when you see it.
+        </p>
+        <p class="body-copy">
+          That is what makes a small model on your own laptop <strong>useful rather than
+          risky</strong>. A 3B model will sometimes pick the wrong task. The cost of that is
+          a diff you decline.
+        </p>
+        <p class="body-copy">
+          Applying re-runs the operation rather than replaying the stored patch. If the file
+          moved on in the meantime, the server refuses and shows you the new diff instead of
+          overwriting work it never saw.
+        </p>
+        <p class="guard">
+          <span aria-hidden="true">↳</span>
+          <span>Auto-apply exists as a setting. It defaults to off, and it should stay there.</span>
+        </p>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="panel-head">
+            <span class="title">Assistant</span>
+            <span class="ws">reading: main</span>
+          </div>
+          <div class="chat">
+            <div class="bubble bubble-you">
+              <p class="who">You</p>
+              <p class="msg">The Korean translation task is done — log it and close it out.</p>
+            </div>
+            <div class="bubble bubble-ai">
+              <p class="who">Assistant</p>
+              <p class="msg">I'll add a log entry and move it to Done. Two changes for you to review.</p>
+            </div>
+            <div class="proposal">
+              <p class="proposal-h">
+                <span>proposed change</span>
+                <span class="file-name">main/tasks/improve-korean-translation.md</span>
+              </p>
+              <pre class="diff"><span class="row hunk">@@ -4,3 +4,3 @@</span><span class="row del">-status: in-progress</span><span class="row add">+status: done</span><span class="row ctx"> created: 2026-08-14T09:30:00+08:00</span><span class="row del">-updated: 2026-08-20T21:31:33+08:00</span><span class="row add">+updated: 2026-08-21T09:04:12+08:00</span><span class="row hunk">@@ -18,2 +18,3 @@</span><span class="row ctx"> - 2026-08-19 16:30 · note · Keeping two</span><span class="row ctx">   previous segments as context</span><span class="row add">+- 2026-08-21 09:04 · note · Landed at 310 ms</span><span class="row add">+  on the Pixel 6a. Closing.</span></pre>
+              <div class="proposal-actions">
+                <span class="mini mini-apply">Apply</span>
+                <span class="mini mini-discard">Discard</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tools" style="margin-top:1rem;">
+          <div class="tool-box">
+            <h3>Read tools</h3>
+            <ul class="tool-list">
+              <li><span class="mark">→</span>listTasks</li>
+              <li><span class="mark">→</span>getTask</li>
+              <li><span class="mark">→</span>searchTasks</li>
+            </ul>
+            <p class="tool-out"><strong>Run immediately.</strong> Nothing to approve — they only look.</p>
+          </div>
+          <div class="tool-box">
+            <h3>Write tools</h3>
+            <ul class="tool-list">
+              <li><span class="mark">→</span>createTask</li>
+              <li><span class="mark">→</span>addLog</li>
+              <li><span class="mark">→</span>setField</li>
+              <li><span class="mark">→</span>archiveTask</li>
+            </ul>
+            <p class="tool-out"><strong>Return a diff.</strong> They apply nothing on their own.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================== workspaces -->
+  <section id="workspaces">
+    <div class="wrap spread">
+      <div class="prose">
+        <p class="eyebrow">Workspaces</p>
+        <h2>A workspace is a folder. All of them alike.</h2>
+        <p class="body-copy">
+          Make one in the app, or make one in Finder — a folder with a
+          <span class="inline-code">tasks/</span> in it is a workspace the next time the
+          planner looks. Each gets its own board, its own lanes, its own cards.
+        </p>
+        <p class="body-copy">
+          <strong>The assistant only ever sees the workspace you are in.</strong> Not as a
+          filter it applies, but because it is handed that one folder and holds no reference
+          to any other. It cannot list, search, read or write across the boundary, and it is
+          not told the others exist.
+        </p>
+        <p class="body-copy">
+          Ask about work in another workspace and the honest answer it has is
+          <em>"not in this one"</em>.
+        </p>
+      </div>
+
+      <pre class="tree"><span class="dir">~/watsmytask-vault/</span>
+├── <span class="dir">main/</span>              <span class="note">a workspace: its own board, its own tasks</span>
+│   ├── <span class="f">board.md</span>       <span class="note">the columns, in order, and what this is called</span>
+│   ├── <span class="dir">tasks/</span>
+│   │   ├── <span class="f">improve-korean-translation.md</span>
+│   │   └── <span class="f">payment-integration.md</span>
+│   └── <span class="dir">archive/</span>
+├── <span class="dir">client-work/</span>      <span class="note">every other workspace is the same shape</span>
+│   ├── <span class="f">board.md</span>
+│   ├── <span class="dir">tasks/</span>
+│   └── <span class="dir">archive/</span>
+└── <span class="dir">.watsmytask/</span>      <span class="note">settings + caches (safe to delete)</span></pre>
+    </div>
+  </section>
+
+  <!-- =========================================================== features -->
+  <section>
+    <div class="wrap">
+      <div class="prose" style="margin-bottom: 2.5rem;">
+        <p class="eyebrow">The rest of it</p>
+        <h2>Details that keep the folder trustworthy</h2>
+      </div>
+      <div class="feat">
+        <div>
+          <h3>Surgical writes</h3>
+          <p>
+            Setting a field rewrites only the lines holding that field. Adding a log entry
+            only appends. Your hand-written formatting, your comments and any frontmatter
+            keys the app has never heard of all survive untouched.
+          </p>
+        </div>
+        <div>
+          <h3>Lanes are yours</h3>
+          <p>
+            No fixed To&nbsp;Do / Doing / Done. Lanes live in <span class="inline-code">board.md</span>
+            and you name them. Rename one and a single line changes — the id is the identity,
+            so no task is rewritten.
+          </p>
+        </div>
+        <div>
+          <h3>Nothing goes invisible</h3>
+          <p>
+            Hand-write a <span class="inline-code">status:</span> no lane matches and the
+            column appears anyway. A task you cannot see is worse than a column you did
+            not ask for.
+          </p>
+        </div>
+        <div>
+          <h3>Edits from outside</h3>
+          <p>
+            A file watcher picks up changes you make in Obsidian or vim and pushes them
+            straight to the open tab. The folder is the source of truth, not the app's memory
+            of it.
+          </p>
+        </div>
+        <div>
+          <h3>Git as undo</h3>
+          <p>
+            Point it at a vault that is a git repo and every applied change becomes a commit,
+            with an Undo next to it in History. Your version control, not a proprietary
+            trash can.
+          </p>
+        </div>
+        <div>
+          <h3>Faster than asking</h3>
+          <p>
+            The command palette <span class="kbd">⌘K</span> exists so the chat is never the
+            quickest way to do a simple thing. "Mark X done" should be two keystrokes, not a
+            sentence and a model round-trip.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ install -->
+  <section id="install">
+    <div class="wrap">
+      <div class="prose" style="margin-bottom: 2rem;">
+        <p class="eyebrow">Install</p>
+        <h2>Two minutes, no admin password</h2>
+        <p class="body-copy">
+          Nothing is written outside your own user folder, on either platform.
+        </p>
+      </div>
+
+      <div class="install-grid">
+        <div class="install-card">
+          <h3>Not a terminal person</h3>
+          <p>Download the installer, double-click, done. It fetches Node for you if you do not have it.</p>
+          <ol>
+            <li>Download <strong>watsmytask-installer.zip</strong> from the latest release and unzip it.</li>
+            <li>Double-click the installer for your computer and read <strong>READ ME FIRST.txt</strong>.</li>
+            <li>Allow it past the one security prompt — <strong>Open Anyway</strong> on macOS, <strong>Run anyway</strong> on Windows.</li>
+          </ol>
+          <p class="req">
+            It leaves a launcher in your Applications folder on a Mac, and on your Desktop on Windows.
+          </p>
+          <a class="btn btn-primary" href="https://github.com/CharmFlex-Studio/Smart-Task-Planner/releases/latest/download/watsmytask-installer.zip" download>Download the installer</a>
+          <p class="req" style="margin-top:0;">Always the newest version. About 15&nbsp;KB — the installer fetches the rest.</p>
+        </div>
+
+        <div class="install-card">
+          <h3>Comfortable in a terminal</h3>
+          <p>One command. It starts the server and opens your browser.</p>
+          <div class="copyline">
+            <span class="prompt" aria-hidden="true">$</span>
+            <code>npx watsmytask</code>
+            <button class="copy-btn" type="button" data-copy="npx watsmytask">copy</button>
+          </div>
+          <div class="copyline">
+            <span class="prompt" aria-hidden="true">$</span>
+            <code>npm install -g watsmytask</code>
+            <button class="copy-btn" type="button" data-copy="npm install -g watsmytask">copy</button>
+          </div>
+          <p class="req">
+            Requires Node 20.11 or newer. Your tasks land in
+            <span class="inline-code">~/watsmytask-vault</span> — back that folder up and you
+            have backed up everything.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-in">
+    <p>
+      watsmytask — a task planner whose database is a folder of markdown files.<br />
+      MIT licensed. Runs entirely on your machine.
+    </p>
+    <div class="foot-links">
+      <a href="https://github.com/CharmFlex-Studio/Smart-Task-Planner">Source</a>
+      <a href="https://www.npmjs.com/package/watsmytask">npm</a>
+      <a href="https://github.com/CharmFlex-Studio/Smart-Task-Planner/tree/main/setup">Install help</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // --- linked highlighting: the file and the card are the same task ---------
+  var linked = Array.prototype.slice.call(document.querySelectorAll("[data-link]"));
+  function setLit(key, on) {
+    for (var i = 0; i < linked.length; i++) {
+      if (linked[i].getAttribute("data-link") === key) {
+        linked[i].classList.toggle("lit", on);
+      }
+    }
+  }
+  linked.forEach(function (el) {
+    var key = el.getAttribute("data-link");
+    el.addEventListener("mouseenter", function () { setLit(key, true); });
+    el.addEventListener("mouseleave", function () { setLit(key, false); });
+    // Reachable without a mouse: the card side is focusable, and focusing it
+    // lights the matching lines in the file exactly as hovering does.
+    if (el.closest(".card, .lane-head")) {
+      el.tabIndex = 0;
+      el.addEventListener("focus", function () { setLit(key, true); });
+      el.addEventListener("blur", function () { setLit(key, false); });
+    }
+  });
+
+  // --- copy buttons --------------------------------------------------------
+  document.querySelectorAll("[data-copy]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = btn.getAttribute("data-copy");
+      var done = function () {
+        var was = btn.textContent;
+        btn.textContent = "copied";
+        btn.setAttribute("data-copied", "yes");
+        setTimeout(function () {
+          btn.textContent = was;
+          btn.removeAttribute("data-copied");
+        }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () {});
+      }
+    });
+  });
+
+  // --- theme toggle: light -> dark -> follow the system ---------------------
+  var root = document.documentElement;
+  var btn = document.getElementById("theme");
+  var order = ["light", "dark", "system"];
+  var saved = null;
+  try { saved = localStorage.getItem("wmt-theme"); } catch (e) {}
+  var mode = order.indexOf(saved) > -1 ? saved : "system";
+
+  function paint() {
+    if (mode === "system") root.removeAttribute("data-theme");
+    else root.setAttribute("data-theme", mode);
+    btn.textContent = mode;
+    btn.setAttribute("aria-label", "Colour theme: " + mode + ". Click to change.");
+  }
+  btn.addEventListener("click", function () {
+    mode = order[(order.indexOf(mode) + 1) % order.length];
+    try { localStorage.setItem("wmt-theme", mode); } catch (e) {}
+    paint();
+  });
+  paint();
+
+  // --- one entrance pass ---------------------------------------------------
+  requestAnimationFrame(function () {
+    document.body.classList.add("revealed");
+  });
+})();
+</script>
+</body>
+</html>

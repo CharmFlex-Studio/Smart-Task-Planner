@@ -87,8 +87,7 @@ readable. There is no export feature because there is nothing to export from.
 
 ## Install it
 
-**Not a terminal person?** Download the installer zip from the
-[latest release](https://github.com/CharmFlex-Studio/Smart-Task-Planner/releases/latest),
+**Not a terminal person?** [Download the installer](https://github.com/CharmFlex-Studio/Smart-Task-Planner/releases/latest/download/watsmytask-installer.zip),
 unzip it, and double-click the one for your computer. It checks whether you have Node,
 offers to install it if you do not, sets up watsmytask, and leaves you a launcher in your
 Applications folder (macOS) or on your Desktop (Windows). No administrator password, and

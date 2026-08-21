@@ -16,12 +16,18 @@ ROOT="$(cd "$HERE/.." && pwd)"
 VERSION="$(node -p "require('$ROOT/package.json').version")"
 OUT_DIR="$ROOT/release"
 STAGE="$OUT_DIR/watsmytask-installer"
-ZIP="$OUT_DIR/watsmytask-installer-v$VERSION.zip"
+# A STABLE filename, deliberately without the version in it. The download button on the
+# homepage points at
+#   .../releases/latest/download/watsmytask-installer.zip
+# which GitHub only resolves when the asset name never changes. The version lives inside
+# the zip instead, stamped into the readme, and on the release that carries it.
+ZIP="$OUT_DIR/watsmytask-installer.zip"
 
 rm -rf "$STAGE" "$ZIP"
 mkdir -p "$STAGE"
 
-cp "$HERE/READ ME FIRST.txt" "$STAGE/"
+# Stamp the version in, so a downloaded zip can still say what it is.
+sed "s/__VERSION__/$VERSION/g" "$HERE/READ ME FIRST.txt" > "$STAGE/READ ME FIRST.txt"
 cp "$HERE/macOS - Install watsmytask.command" "$STAGE/"
 cp "$HERE/Windows - Install watsmytask.bat" "$STAGE/"
 
@@ -33,7 +39,7 @@ chmod +x "$STAGE/macOS - Install watsmytask.command"
 ( cd "$OUT_DIR" && zip -q -r -X "$(basename "$ZIP")" "$(basename "$STAGE")" )
 rm -rf "$STAGE"
 
-echo "  built  $ZIP"
+echo "  built  $ZIP  (watsmytask $VERSION)"
 echo
 unzip -l "$ZIP" | sed 's/^/  /'
 

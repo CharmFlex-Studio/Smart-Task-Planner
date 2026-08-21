@@ -1,6 +1,8 @@
 watsmytask - how to install
 ===========================
 
+Installer for watsmytask __VERSION__
+
 Your tasks, kept as plain text files you can read, edit and back up yourself.
 
 You do NOT need to know anything technical to install this. Pick your computer

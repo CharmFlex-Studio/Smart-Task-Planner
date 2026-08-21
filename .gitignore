@@ -9,3 +9,6 @@ dist/
 
 # Installer zips, rebuilt by setup/build-release.sh.
 release/
+
+# macOS Finder droppings.
+.DS_Store

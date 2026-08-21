@@ -11,9 +11,11 @@ can find it again.
 Neither installer needs an administrator password. Both install into a folder your own
 account owns, and neither writes anything outside your home folder.
 
-**Download `watsmytask-installer-v<version>.zip` from the
-[latest release](https://github.com/CharmFlex-Studio/Smart-Task-Planner/releases/latest),
-then unzip it.** Inside are both installers and a plain-text `READ ME FIRST.txt`.
+**[Download `watsmytask-installer.zip`](https://github.com/CharmFlex-Studio/Smart-Task-Planner/releases/latest/download/watsmytask-installer.zip), then unzip it.**
+Inside are both installers and a plain-text `READ ME FIRST.txt`.
+
+That link always resolves to the newest release, so it is safe to share and safe to
+bookmark.
 
 Take the zip rather than the loose files. A browser downloading a `.command` on its own
 strips the executable bit, and the file then opens in TextEdit instead of running. Zip

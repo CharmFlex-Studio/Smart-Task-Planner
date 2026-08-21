@@ -1,0 +1,51 @@
+name: Homepage
+
+# Publish server/ to GitHub Pages.
+#
+# The homepage is one static HTML file with no build step, so this uploads the folder as
+# it stands. It redeploys only when that folder actually changes — the page does not
+# depend on the app's source, and rebuilding it on every commit to main would just make
+# the deploy history unreadable.
+#
+# One-time setup, which cannot be done from a workflow: Settings > Pages > Build and
+# deployment > Source: GitHub Actions. Until that is switched over, this job fails at
+# the configure step.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; queue instead, and do not cancel one half-done.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fail early if the page is missing
+        run: test -f server/index.html || { echo "::error::server/index.html not found"; exit 1; }
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: server
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
