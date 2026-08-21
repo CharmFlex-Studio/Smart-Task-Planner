@@ -115,6 +115,20 @@ like it worked.
 Running an installer straight from a clone of the repo installs `latest`, since there is
 no release to pin it to.
 
+## Updating
+
+Download the installer again from the
+[latest release](https://github.com/CharmFlex-Studio/Smart-Task-Planner/releases/latest)
+and run it. It installs over the existing copy and keeps your tasks — they live in
+`~/watsmytask-vault`, which the installer never touches.
+
+An installer does **not** update anything on its own, and neither does the launcher it
+leaves you: each installer is pinned to the version it shipped with, so a copy installed
+from an older release keeps running that version until you install a newer one. The
+version you are running is shown at the bottom of the sidebar, under the vault path.
+
+With a terminal, `npx watsmytask@latest` always fetches the current version.
+
 ## Uninstalling
 
 Your tasks are **not** deleted by any of this — they are markdown files in

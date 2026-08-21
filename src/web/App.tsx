@@ -13,7 +13,7 @@ import { Icon, type IconName } from './components/Icon.js';
 type View = 'board' | 'today' | 'tasks' | 'history' | 'setup';
 
 export function App() {
-  const { tasks, today, error, setError, connected, vaultPath, loading } = usePlanner();
+  const { tasks, today, error, setError, connected, vaultPath, version, loading } = usePlanner();
   const [view, setView] = useState<View>('board');
   const [openId, setOpenId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(() => window.matchMedia('(min-width: 1181px)').matches);
@@ -74,6 +74,7 @@ export function App() {
             {connected ? 'watching vault' : 'reconnecting…'}
           </div>
           <div className="vault-path">{vaultPath}</div>
+          {version && <div className="rail-version">watsmytask {version}</div>}
         </div>
       </nav>
 

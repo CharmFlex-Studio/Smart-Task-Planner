@@ -1241,3 +1241,12 @@ code { font-family: var(--mono); font-size: 12.5px; }
   cursor: pointer;
 }
 .description-edit:hover { color: var(--text); border-color: var(--accent-line); }
+
+/* Which version is running. Quiet, but there — an old install and a missing feature look
+   the same on screen, and the installers pin a version on purpose. */
+.rail-version {
+  margin-top: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--faint);
+}

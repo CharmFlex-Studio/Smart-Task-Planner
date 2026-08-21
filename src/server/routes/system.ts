@@ -3,6 +3,7 @@ import { streamSSE } from 'hono/streaming';
 import type { PlannerContext } from '../context.js';
 import type { Settings } from '../config.js';
 import { fail } from './errors.js';
+import { VERSION } from '../version.js';
 
 /** Settings, the live event stream, and a health check. */
 export function systemRoutes(ctx: PlannerContext): Hono {
@@ -11,13 +12,16 @@ export function systemRoutes(ctx: PlannerContext): Hono {
   app.get('/health', (c) =>
     c.json({
       ok: true,
+      version: VERSION,
       vault: ctx.paths.vault,
       tasks: ctx.vault.size,
       workspaces: ctx.vault.ids().length,
     }),
   );
 
-  app.get('/settings', (c) => c.json({ settings: ctx.settings, vault: ctx.paths.vault }));
+  app.get('/settings', (c) =>
+    c.json({ settings: ctx.settings, vault: ctx.paths.vault, version: VERSION }),
+  );
 
   app.patch('/settings', async (c) => {
     try {

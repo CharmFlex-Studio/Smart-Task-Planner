@@ -45,6 +45,18 @@ describe('health and settings', () => {
     await expect(fs.access(path.join(dir, 'tasks'))).rejects.toThrow();
   });
 
+  it('reports its version, so a stale install is tellable from a missing feature', async () => {
+    const pkg = JSON.parse(
+      await fs.readFile(new URL('../../package.json', import.meta.url), 'utf8'),
+    ) as { version: string };
+
+    const health = await (await get('/api/health')).json();
+    expect(health.version).toBe(pkg.version);
+
+    const settings = await (await get('/api/settings')).json();
+    expect(settings.version).toBe(pkg.version);
+  });
+
   it('persists a settings change to disk', async () => {
     const res = await send('/api/settings', 'PATCH', { keepLoaded: true });
     expect(res.status).toBe(200);

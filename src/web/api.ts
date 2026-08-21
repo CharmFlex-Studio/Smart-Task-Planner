@@ -128,7 +128,7 @@ export const api = {
   restore: (id: string) => post<WriteResult>(`/tasks/${encodeURIComponent(id)}/restore`),
   remove: (id: string) => request<{ ok: boolean }>(`/tasks/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 
-  settings: () => request<{ settings: Settings; vault: string }>('/settings'),
+  settings: () => request<{ settings: Settings; vault: string; version: string }>('/settings'),
   saveSettings: (patch: Partial<Settings>) =>
     request<{ settings: Settings }>('/settings', { method: 'PATCH', body: JSON.stringify(patch) }),
   reload: () => post<{ ok: boolean; tasks: number }>('/reload'),

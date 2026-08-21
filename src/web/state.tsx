@@ -51,6 +51,7 @@ interface PlannerState {
   today: TodayView | null;
   settings: Settings | null;
   vaultPath: string;
+  version: string;
   ai: AiStatus | null;
   connected: boolean;
   loading: boolean;
@@ -76,6 +77,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
   const [today, setToday] = useState<TodayView | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [vaultPath, setVaultPath] = useState('');
+  const [version, setVersion] = useState('');
   const [ai, setAi] = useState<AiStatus | null>(null);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -146,6 +148,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
         const s = await api.settings();
         setSettings(s.settings);
         setVaultPath(s.vault);
+        setVersion(s.version ?? '');
       } catch {
         /* refresh() will surface the failure */
       }
@@ -216,6 +219,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
       today,
       settings,
       vaultPath,
+      version,
       ai,
       connected,
       loading,
@@ -234,6 +238,7 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
       today,
       settings,
       vaultPath,
+      version,
       ai,
       connected,
       loading,
