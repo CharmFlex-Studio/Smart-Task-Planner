@@ -10,6 +10,7 @@ import type {
   ProposedChange,
 } from '@shared/types.js';
 import { externalAiBaseUrl, externalAiModel, type Paths, type Settings } from '../config.js';
+import { readGgufInfo, toolSupportFromTemplate } from './gguf.js';
 import type { Scope } from '../context.js';
 import type { EventBus } from '../events.js';
 import {
@@ -204,12 +205,17 @@ export class AiPlugin {
       }
     } else {
       for (const model of await listDownloadedModels(this.deps.paths.models)) {
+        // Read from the file rather than guessed from the name: the chat template is what
+        // decides whether this model can drive tools, and a few milliseconds of header is
+        // cheaper than sending someone to download 3GB of something that cannot.
+        const info = await readGgufInfo(path.join(this.deps.paths.models, model.file));
         available.push({
           id: model.file,
           label: model.file.replace(/\.gguf$/i, ''),
           source: 'downloaded',
           sizeBytes: model.sizeBytes,
           toolCalling: toolCallingForSize(model.file).level,
+          toolSupport: toolSupportFromTemplate(info?.chatTemplate),
         });
       }
     }

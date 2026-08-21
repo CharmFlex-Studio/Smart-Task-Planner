@@ -99,9 +99,15 @@ export function ModelPicker() {
             <div className="name">
               {model.label}
               {model.sizeBytes ? <span className="pill">{formatBytes(model.sizeBytes)}</span> : null}
-              <ToolCallingPill level={model.toolCalling} />
+              <ToolCallingPill level={model.toolCalling} support={model.toolSupport} />
               {view.selected === model.id && <span className="pill green">in use</span>}
             </div>
+            {model.toolSupport === 'no' && (
+              <div className="note warn">
+                This model has no tool calling in its chat template, so it cannot search
+                your tasks or draft changes. It can still summarise what it is shown.
+              </div>
+            )}
             {model.source === 'downloaded' && (
               <div className="note">
                 <span
@@ -307,15 +313,49 @@ function Downloader({
   );
 }
 
-function ToolCallingPill({ level }: { level: string }) {
+/**
+ * What this model can do with tools.
+ *
+ * When the file has been read, that answer wins outright: a chat template with nowhere to
+ * put a tool call cannot produce one, and no number of parameters changes that. The
+ * size-class guess is only shown when there is nothing better — for a model on an external
+ * server, whose template we cannot see.
+ */
+function ToolCallingPill({
+  level,
+  support,
+}: {
+  level: string;
+  support?: 'yes' | 'no' | 'unknown';
+}) {
+  if (support === 'no') {
+    return (
+      <span
+        className="pill red"
+        title="Read from this model's own chat template: it has nowhere to put a tool call, so it cannot look anything up or draft a change however large it is. Fine for summarising."
+      >
+        cannot use tools
+      </span>
+    );
+  }
+  if (support === 'yes') {
+    return (
+      <span
+        className="pill green"
+        title="Read from this model's own chat template, which supports tool calls. How reliably it uses them still depends on its size."
+      >
+        supports tools{level === 'unreliable' ? ' · small' : ''}
+      </span>
+    );
+  }
   if (level === 'unknown') return null;
   const tone = level === 'reliable' ? 'green' : level === 'workable' ? 'amber' : 'red';
   return (
     <span
       className={`pill ${tone}`}
-      title="Rule of thumb from the parameter count in the name — a guess about the size class, not a measurement of this model."
+      title="A guess from the parameter count in the name, not a measurement — and size does not decide whether a model can use tools at all. Some families cannot, at any size."
     >
-      tool calling: {level}
+      maybe: {level}
     </span>
   );
 }

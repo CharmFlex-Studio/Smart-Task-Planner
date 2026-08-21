@@ -299,18 +299,29 @@ Applying re-runs the tool rather than replaying the stored patch — if the file
 the meantime, the server refuses and shows you the updated diff instead of overwriting work
 it never saw.
 
-**Model sizing, honestly:** summarizing is easy and tool calling is hard.
+**Whether a model can use tools at all is not a size question.** It is decided by the chat
+template the model was packaged with — llama-server runs that template, and one with
+nowhere to put a tool call cannot produce one however large the model is. Gemma is the
+common surprise: every size of it will summarise happily and none of it can look anything
+up.
 
-| Class | Summarize | Tool calling |
+So the picker reads the template out of the `.gguf` itself and says **supports tools** or
+**cannot use tools** as a fact about that file. It costs a few milliseconds of header and
+no memory, and it is the difference between finding out now and finding out after a 3 GB
+download.
+
+**Size still decides how *well* a model uses tools it can use:**
+
+| Class | Summarize | Tool calling, if the template supports it |
 |---|---|---|
 | under 3B | fine | unreliable |
 | 3–7B | good | workable, with the confirm flow |
 | 7B and up | very good | reliable; wants ~6 GB free |
 
-Every model in the picker carries that label, worked out from the parameter count in its
-name — including MoE models, judged by their *active* parameters, and Gemma's `E4B`
-effective-parameter naming. It is a rule of thumb about a size class, not a measurement of
-that particular model, and the UI says so on hover.
+That column is a rule of thumb from the parameter count in the name — including MoE
+models, judged by their *active* parameters, and Gemma's `E4B` effective-parameter naming.
+It is a guess about a size class, and it is shown as **maybe** for models whose template
+cannot be read: an external server does not expose one.
 
 The command palette (`⌘K`) exists so the chatbot is never the fastest way to do a simple
 thing. "Mark X done" should be two keystrokes, not a sentence and a model round-trip.

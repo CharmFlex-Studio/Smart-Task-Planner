@@ -6,6 +6,18 @@ here ships without a "what's new" — keep it up to date as part of the version 
 
 ## 0.5.0
 
+**The model picker now tells you whether a model can use tools at all**, read from the
+model's own chat template rather than guessed from the number in its name. Some families —
+Gemma among them — cannot drive tools at any size: they will summarise happily and cannot
+look anything up or draft a change. The picker used to call a 4B Gemma "workable" for tool
+calling, the same as a 4B Qwen, which is how you end up downloading three gigabytes of
+something that will not do the job.
+
+A model whose template has no tools now says **cannot use tools**, with a line explaining
+what that means. One that does says **supports tools**. The size guess is only shown when
+there is no template to read, and is labelled as the guess it is.
+
+
 **The assistant can read what you attach.** Ask it about a log file or a screenshot and
 it opens the file itself. Text files it reads directly. Images it can only see if the
 model you are running can see — most small local models cannot, and one that cannot is

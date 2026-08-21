@@ -192,6 +192,13 @@ export interface AvailableModel {
   sizeBytes?: number;
   /** Rule of thumb from the parameter count in the name -- not a claim about this model. */
   toolCalling: 'unreliable' | 'workable' | 'reliable' | 'unknown';
+  /**
+   * Whether this model's own chat template has anywhere to put a tool call, read from the
+   * file. Unlike `toolCalling` this is a fact about the model rather than a guess from its
+   * name — and it overrides it, because a template with no tools cannot produce one at any
+   * size. Only known for downloaded models; an external server does not expose its template.
+   */
+  toolSupport?: 'yes' | 'no' | 'unknown';
 }
 
 export interface SuggestedRepo {

@@ -1311,3 +1311,13 @@ code { font-family: var(--mono); font-size: 12.5px; }
   margin: 0 0.25rem;
   background: var(--line-strong);
 }
+
+/* A model that cannot drive tools is worth saying plainly, where it is chosen. */
+.model-option .note.warn {
+  color: var(--amber);
+  background: var(--amber-soft);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  margin-top: 0.35rem;
+  line-height: 1.45;
+}
