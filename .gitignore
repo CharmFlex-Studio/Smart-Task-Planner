@@ -1,3 +1,11 @@
+node_modules/
+dist/
 
 # avengers-12 scratch space, written fresh every run
 .loop/
+
+# Packed tarballs from `npm pack`, rebuilt on demand.
+*.tgz
+
+# Installer zips, rebuilt by setup/build-release.sh.
+release/
