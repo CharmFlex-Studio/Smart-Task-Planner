@@ -24,7 +24,14 @@ export function Board({ onOpen }: { onOpen(id: string): void }) {
 
   const columns = useMemo(() => buildColumns(tasks, lanes, query), [tasks, lanes, query]);
   const shown = columns.reduce((count, column) => count + column.tasks.length, 0);
-  const total = tasks.filter((task) => !task.archived).length;
+  // Two different totals, because the two sentences below ask different questions. A search
+  // is filtering everything drawn on the board, the done column included, so it counts
+  // against that. The resting state reports work still to do, which is not the same number.
+  const onBoard = tasks.filter((task) => !task.archived).length;
+  // `momentum` is the server's answer to "is this finished", worked out from whichever lane
+  // the board marks as done — so this follows a renamed or moved done lane without any lane
+  // name appearing here.
+  const open = tasks.filter((task) => !task.archived && task.derived.momentum !== 'done').length;
 
   const move = async (taskId: string, laneId: string) => {
     const task = tasks.find((t) => t.fields.id === taskId);
@@ -46,7 +53,9 @@ export function Board({ onOpen }: { onOpen(id: string): void }) {
         <div>
           <h1>Board</h1>
           <p>
-            {query ? `${shown} of ${total} tasks match` : `${total} open ${total === 1 ? 'task' : 'tasks'}`}
+            {query
+              ? `${shown} of ${onBoard} tasks match`
+              : `${open} open ${open === 1 ? 'task' : 'tasks'}`}
           </p>
         </div>
         <label className="search-field">

@@ -403,10 +403,23 @@ export class VaultStore {
     return this.entries.size;
   }
 
-  /** Open tasks, for the workspace switcher. */
+  /**
+   * Open tasks, for the workspace switcher.
+   *
+   * Open means neither archived nor finished. Archiving and finishing are different acts —
+   * a task sits in the done lane long before anyone files it away, and often forever — so
+   * counting merely-unarchived tasks reported every completed task as still open and made
+   * the number grow monotonically no matter how much work got done.
+   *
+   * Which lane means finished is the board's to say, never this file's.
+   */
   get openCount(): number {
     let count = 0;
-    for (const entry of this.entries.values()) if (!entry.archived) count++;
+    for (const entry of this.entries.values()) {
+      if (entry.archived) continue;
+      if (this.isDoneLane(entry.parsed.fields.status)) continue;
+      count++;
+    }
     return count;
   }
 

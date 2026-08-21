@@ -60,6 +60,57 @@ describe('loading', () => {
   });
 });
 
+describe('openCount', () => {
+  const task = (id: string, status: string) =>
+    write(`tasks/${id}.md`, `---\nid: ${id}\ntitle: ${id}\nstatus: ${status}\n---\n`);
+
+  it('counts tasks that are neither finished nor archived', async () => {
+    await task('a', 'todo');
+    await task('b', 'in-progress');
+    await task('c', 'done');
+    await store.load();
+    expect(store.openCount).toBe(2);
+  });
+
+  it('drops a task out of the count the moment it reaches the done lane', async () => {
+    await task('a', 'todo');
+    await store.load();
+    expect(store.openCount).toBe(1);
+
+    await store.writeTask('a', (raw) => raw.replace('status: todo', 'status: done'));
+    expect(store.openCount).toBe(0);
+  });
+
+  it('asks the board which lane is done rather than assuming the name', async () => {
+    // A board whose completion lane is called "shipped", and which also has a lane
+    // literally named "done" that means nothing of the sort.
+    await write(
+      'board.md',
+      '---\nlanes:\n  - id: done\n    name: Done Thinking\n  - id: shipped\n    name: Shipped\n    done: true\n---\n',
+    );
+    await task('a', 'done');
+    await task('b', 'shipped');
+    await store.load();
+    expect(store.openCount).toBe(1);
+  });
+
+  it('counts every task as open when the board names no done lane at all', async () => {
+    await write('board.md', '---\nlanes:\n  - id: now\n    name: Now\n---\n');
+    await task('a', 'now');
+    await task('b', 'now');
+    await store.load();
+    expect(store.openCount).toBe(2);
+  });
+
+  it('leaves archived tasks out however open their lane looks', async () => {
+    await task('a', 'todo');
+    await task('b', 'todo');
+    await store.load();
+    await store.moveTask('b', true);
+    expect(store.openCount).toBe(1);
+  });
+});
+
 describe('lanes', () => {
   it('uses the default lanes when the vault has no board file', async () => {
     await store.load();

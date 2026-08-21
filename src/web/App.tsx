@@ -47,6 +47,9 @@ export function App() {
   };
 
   const attention = today?.needsAttention.length ?? 0;
+  // The badge counts work still to do, so a finished task leaves it — the same rule the
+  // board's own header uses. Doneness comes from the board's done lane via `momentum`.
+  const openCount = tasks.filter((t) => !t.archived && t.derived.momentum !== 'done').length;
 
   return (
     <div className={chatOpen ? 'shell with-chat' : 'shell'}>
@@ -56,7 +59,7 @@ export function App() {
         <WorkspaceMenu />
 
         <div className="nav primary-nav" aria-label="Workspace">
-          <NavButton icon="board" label="Board" active={view === 'board' && !openId} current count={tasks.filter((t) => !t.archived).length} onClick={() => go('board')} />
+          <NavButton icon="board" label="Board" active={view === 'board' && !openId} current count={openCount} onClick={() => go('board')} />
           <NavButton icon="spark" label="My work" active={view === 'today' && !openId} current count={attention || undefined} onClick={() => go('today')} />
           <NavButton icon="tasks" label="All tasks" active={view === 'tasks' && !openId} current onClick={() => go('tasks')} />
           <NavButton icon="history" label="History" active={view === 'history' && !openId} current onClick={() => go('history')} />
