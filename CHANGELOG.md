@@ -4,7 +4,7 @@ What changed for someone using watsmytask. The release workflow reads the sectio
 the version being released and puts it in the release notes, so a version with no section
 here ships without a "what's new" — keep it up to date as part of the version bump.
 
-## 0.5.0
+## 0.5.1
 
 **The assistant reaches for its tools far more readily.** It used to answer from the
 summary it was given and never open a task, because the prompt told it the list it had
@@ -33,6 +33,7 @@ A model whose template has no tools now says **cannot use tools**, with a line e
 what that means. One that does says **supports tools**. The size guess is only shown when
 there is no template to read, and is labelled as the guess it is.
 
+## 0.5.0
 
 **The assistant can read what you attach.** Ask it about a log file or a screenshot and
 it opens the file itself. Text files it reads directly. Images it can only see if the

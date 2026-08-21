@@ -168,7 +168,14 @@ describe('the prompt tells the model what it cannot see', () => {
 describe('the index hands over what it has already worked out', () => {
   it('includes the attention reasons rather than leaving the model to do date maths', () => {
     const overdue = {
-      fields: { id: 'x', title: 'Late thing', status: 'todo', due: '2026-08-01' },
+      fields: {
+        id: 'x',
+        title: 'Late thing',
+        status: 'todo',
+        due: '2026-08-01',
+        created: '2026-07-01T09:00:00',
+        updated: '2026-08-05T09:00:00',
+      },
       description: '',
       log: [],
       archived: false,
@@ -187,7 +194,13 @@ describe('the index hands over what it has already worked out', () => {
 
   it('says so when it is not showing every open task', () => {
     const many = Array.from({ length: 50 }, (_, i) => ({
-      fields: { id: 't' + i, title: 'Task ' + i, status: 'todo' },
+      fields: {
+        id: 't' + i,
+        title: 'Task ' + i,
+        status: 'todo',
+        created: '2026-08-01T09:00:00',
+        updated: '2026-08-20T09:00:00',
+      },
       description: '',
       log: [],
       archived: false,

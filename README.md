@@ -301,9 +301,9 @@ it never saw.
 
 **Whether a model can use tools at all is not a size question.** It is decided by the chat
 template the model was packaged with — llama-server runs that template, and one with
-nowhere to put a tool call cannot produce one however large the model is. Gemma is the
-common surprise: every size of it will summarise happily and none of it can look anything
-up.
+nowhere to put a tool call cannot produce one however large the model is. Older Gemma
+releases were the common example of that; Gemma 4 has tools in its template and llama.cpp
+can parse its format, so this is a question to ask of a specific file rather than a family.
 
 So the picker reads the template out of the `.gguf` itself and says **supports tools** or
 **cannot use tools** as a fact about that file. It costs a few milliseconds of header and
