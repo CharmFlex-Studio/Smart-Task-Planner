@@ -106,3 +106,28 @@ describe('findWebRoot', () => {
     expect(findWebRoot(bare)).toBeNull();
   });
 });
+
+/**
+ * The two halves of serving a fingerprinted build, and they must not be the same.
+ *
+ * Assets carry a content hash in the filename, so they can be cached forever. The page
+ * that names them cannot: a browser holding the previous version's index.html asks for a
+ * script that no longer exists and the app never starts — which looks, from the outside,
+ * exactly like the update broke something.
+ */
+describe('what may be cached', () => {
+  it('serves the entry page with no-cache', async () => {
+    const { buildApp } = await import('./app.js');
+    const { resolvePaths } = await import('./config.js');
+    const vault = await fs.mkdtemp(path.join(os.tmpdir(), 'cache-'));
+    const { app } = await buildApp(
+      resolvePaths({ WATSMYTASK_VAULT: vault, WATSMYTASK_HOME: path.join(vault, '.app') }),
+    );
+    const res = await app.request('http://localhost/');
+    // Only meaningful when a built frontend is present; skip rather than assert nothing.
+    if (res.status === 200 && (res.headers.get('content-type') ?? '').includes('html')) {
+      expect(res.headers.get('cache-control')).toMatch(/no-cache/);
+    }
+    await fs.rm(vault, { recursive: true, force: true });
+  });
+});

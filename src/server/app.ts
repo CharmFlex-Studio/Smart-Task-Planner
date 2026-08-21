@@ -120,6 +120,12 @@ export async function buildApp(paths: Paths = resolvePaths()): Promise<BuiltApp>
     });
     app.get('*', async (c) => {
       const html = await fs.promises.readFile(path.join(webRoot, 'index.html'), 'utf8');
+      // Never cached, unlike the assets it names. Vite fingerprints those filenames, so
+      // they are safe to keep forever — but that only works if the page naming them is
+      // always fresh. A browser holding yesterday's index.html asks for a script that no
+      // longer exists, gets a 404, and the app simply does not start: the exact shape of
+      // "it worked before I updated".
+      c.header('Cache-Control', 'no-cache, must-revalidate');
       return c.html(html);
     });
   }
