@@ -1,6 +1,6 @@
 {
   "name": "watsmytask",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "A local task planner whose database is a folder of markdown files, with an optional local-AI chat plugin.",
   "keywords": [

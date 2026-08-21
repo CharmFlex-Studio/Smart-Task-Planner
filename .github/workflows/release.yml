@@ -159,11 +159,37 @@ jobs:
             exit 1
           fi
 
+          # Release notes are the standing template with this version's CHANGELOG
+          # section dropped into it, so the notes say what actually changed rather than
+          # repeating the same blurb every time. A version with no section in the
+          # changelog simply ships without a "what's new" rather than failing the release.
           NOTES=".github/release-notes.md"
+          : > /tmp/whats-new.md
+          if [ -f CHANGELOG.md ]; then
+            awk -v v="$VERSION" '
+              $0 ~ "^## " v "([ \t]|$)" { found = 1; next }
+              found && /^## / { exit }
+              found { print }
+            ' CHANGELOG.md > /tmp/whats-new.md
+          fi
+          if [ -s /tmp/whats-new.md ]; then
+            echo "Release notes will include the CHANGELOG section for $VERSION."
+          else
+            echo "::warning::No CHANGELOG.md section for $VERSION — notes will not say what changed."
+          fi
+
           if [ -f "$NOTES" ]; then
-            sed "s/__VERSION__/$VERSION/g" "$NOTES" > /tmp/notes.md
+            sed "s/__VERSION__/$VERSION/g" "$NOTES" |
+              awk '
+                /__WHATS_NEW__/ {
+                  while ((getline line < "/tmp/whats-new.md") > 0) print line
+                  next
+                }
+                { print }
+              ' > /tmp/notes.md
           else
             echo "watsmytask $VERSION" > /tmp/notes.md
+            cat /tmp/whats-new.md >> /tmp/notes.md
           fi
 
           # --target creates the tag at this commit when it does not already exist,

@@ -3,6 +3,7 @@
 Your tasks, kept as plain markdown files in a folder you own. No database, no account,
 nothing leaves your computer.
 
+__WHATS_NEW__
 ### Install without a terminal
 
 Download **`watsmytask-installer.zip`** below, unzip it, and open
