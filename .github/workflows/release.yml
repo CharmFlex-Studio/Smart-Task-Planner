@@ -177,13 +177,33 @@ jobs:
           # and attaches a provenance attestation.
           if ! npm publish --access public; then
             echo "::error::npm rejected the publish."
-            echo "A 404 on PUT here means npm did not accept this job's identity, not that"
-            echo "the package is missing. Check the trusted publisher on npmjs.com:"
-            echo "  the package > Settings > Trusted Publisher > GitHub Actions"
+            echo
+            echo "The preflight above already confirmed the three things this side controls:"
+            echo "npm is new enough, an OIDC token is available, and no auth token is"
+            echo "suppressing it. So npm asked the registry to accept this job's identity and"
+            echo "the registry declined. Both ENEEDAUTH and a 404 on PUT mean that; neither"
+            echo "means the package is missing."
+            echo
+            echo "On npmjs.com, on the watsmytask package:"
+            echo "  Settings > Trusted Publisher > GitHub Actions"
             echo "    Organization or user: ${GITHUB_REPOSITORY%%/*}"
             echo "    Repository:           ${GITHUB_REPOSITORY##*/}"
-            echo "    Workflow filename:    release.yml"
-            echo "    Environment:          (empty)"
+            echo "    Workflow filename:    release.yml     (the file name, not the job)"
+            echo "    Environment:          (leave empty)"
+            echo
+            echo "  Settings > Publishing access"
+            echo "    must NOT be 'Require two-factor authentication'. That setting blocks"
+            echo "    every automated publish, trusted publishing included. Either of the"
+            echo "    other two options allows it."
+            echo
+            # The npm debug log records whether an OIDC exchange was attempted at all,
+            # which is the one thing the error code above does not distinguish.
+            LOG="$(ls -t "${HOME}/.npm/_logs/"*-debug-0.log 2>/dev/null | head -1 || true)"
+            if [ -n "$LOG" ]; then
+              echo "--- npm debug log, lines mentioning auth or OIDC ---"
+              grep -iE 'oidc|id-token|trusted|audience|ENEEDAUTH|401|403|404' "$LOG" | tail -25 || true
+              echo "--- end ---"
+            fi
             exit 1
           fi
 

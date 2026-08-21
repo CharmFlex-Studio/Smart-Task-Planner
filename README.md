@@ -155,10 +155,19 @@ Actions**:
 | Workflow filename | `release.yml` |
 | Environment | *(leave empty)* |
 
+Also on that page, **Settings → Publishing access** must not be set to *Require
+two-factor authentication* — that blocks every automated publish, trusted publishing
+included.
+
 That configuration names the workflow **file**, so renaming `release.yml` breaks
 publishing until the setting is renamed to match. The job needs `id-token: write`, which
 it has, and an npm newer than the one Node 22 ships — the workflow installs `npm@^11.5.1`
 before publishing.
+
+If a publish fails with `ENEEDAUTH` or a 404 on `PUT`, both mean the same thing: the
+registry did not accept the job's identity. Neither means the package is missing. The
+workflow's preflight has already checked everything this repository controls, so the
+answer is on npmjs.com.
 
 ## Work on it
 
