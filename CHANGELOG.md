@@ -4,6 +4,17 @@ What changed for someone using watsmytask. The release workflow reads the sectio
 the version being released and puts it in the release notes, so a version with no section
 here ships without a "what's new" — keep it up to date as part of the version bump.
 
+## 0.5.0
+
+**The assistant can read what you attach.** Ask it about a log file or a screenshot and
+it opens the file itself. Text files it reads directly. Images it can only see if the
+model you are running can see — most small local models cannot, and one that cannot is
+told the picture could not be shown rather than being left to describe something it never
+received. Anything it cannot read at all, it says so instead of guessing.
+
+It is still bounded by the same workspace as everything else, and reading is all it can
+do: attaching, editing and deleting files remain yours.
+
 ## 0.4.2
 
 **Attach files and images** to a description or a comment. Paste one, drop one in, or use
@@ -18,15 +29,6 @@ Only ordinary image types are ever shown in place. Everything else — including
 `.svg` — is handed over as a download rather than rendered here, because a file served
 inline from this origin runs where the app runs, and a vault can be shared or synced by
 someone who is not you.
-
-**The assistant can read what you attach.** Ask it about a log file or a screenshot and
-it opens the file itself. Text files it reads directly. Images it can only see if the
-model you are running can see — most small local models cannot, and one that cannot is
-told the picture could not be shown rather than being left to describe something it never
-received. Anything it cannot read at all, it says so instead of guessing.
-
-It is still bounded by the same workspace as everything else, and reading is all it can
-do: attaching, editing and deleting files remain yours.
 
 **Checkboxes in a comment tick too**, the same as ones in a description. They were
 read-only because there was no write path for a log entry; adding one is what made
