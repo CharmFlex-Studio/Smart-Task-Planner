@@ -96,6 +96,11 @@ jobs:
             echo "Will release $TAG."
           fi
 
+      # Cheap, and catches a broken `run:` block here rather than three minutes into a
+      # release. YAML validity says nothing about the shell inside a block scalar.
+      - name: Check the workflows' own shell
+        run: npm run check:workflows
+
       - name: Test
         run: npm test
 
@@ -156,7 +161,7 @@ jobs:
             grep -n '_authToken' .npmrc
             exit 1
           fi
-          echo "Ready to publish with OIDC.
+          echo "Ready to publish with OIDC."
 
       - name: Publish to npm
         if: steps.decide.outputs.should_release == 'true'

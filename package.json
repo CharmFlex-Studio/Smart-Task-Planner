@@ -44,6 +44,7 @@
     "dev:server": "tsx watch src/server/cli.ts --no-open",
     "dev:web": "vite",
     "typecheck": "tsc --noEmit",
+    "check:workflows": "node .github/check-workflow-shell.mjs",
     "build": "npm run typecheck && npm run build:web && npm run build:server",
     "build:web": "vite build",
     "build:server": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
