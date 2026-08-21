@@ -6,6 +6,22 @@ here ships without a "what's new" — keep it up to date as part of the version 
 
 ## 0.5.0
 
+**The assistant reaches for its tools far more readily.** It used to answer from the
+summary it was given and never open a task, because the prompt told it the list it had
+"was all of it" — which was not true. The list holds titles, columns and dates; the
+descriptions and comments live in the files and need a tool call to read.
+
+The prompt now says that plainly, first, with the tool to call for each kind of question
+and two worked examples. On a 4B model the difference is the whole feature: "why did the
+billing migration slip?" now opens the task and answers from its comments instead of
+guessing.
+
+The index also carries the reasons already worked out — "Overdue by 2 days", "No update
+for 9 days" — rather than raw dates, so the model is not doing arithmetic across forty
+rows to answer "what is overdue". And when it is showing only part of the board, it says
+so, instead of implying the rest does not exist.
+
+
 **The model picker now tells you whether a model can use tools at all**, read from the
 model's own chat template rather than guessed from the number in its name. Some families —
 Gemma among them — cannot drive tools at any size: they will summarise happily and cannot

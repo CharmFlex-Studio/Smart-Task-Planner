@@ -142,3 +142,70 @@ describe('approving a change the model drafted', () => {
     );
   });
 });
+
+/**
+ * The prompt has one job beyond describing the workspace: making a small model reach for
+ * a tool instead of answering from the index. It used to say the tasks listed "are all of
+ * it", which reads as "you already have the data" — and a 4B model believed it.
+ */
+describe('the prompt tells the model what it cannot see', () => {
+  it('calls the list an index and says what it leaves out', () => {
+    const prompt = systemPrompt(personal.store.list(NOW), personal.store.lanes(), 'Personal', NOW);
+    expect(prompt).toMatch(/INDEX/);
+    expect(prompt).toMatch(/does NOT hold descriptions, comments/i);
+    // The old wording claimed the index was the whole of the data.
+    expect(prompt).not.toMatch(/tasks below are all of it/i);
+  });
+
+  it('names the tool to call for each kind of question', () => {
+    const prompt = systemPrompt(personal.store.list(NOW), personal.store.lanes(), 'Personal', NOW);
+    expect(prompt).toContain('get_task');
+    expect(prompt).toContain('search_tasks');
+    expect(prompt).toMatch(/USE A TOOL WHEN/);
+  });
+});
+
+describe('the index hands over what it has already worked out', () => {
+  it('includes the attention reasons rather than leaving the model to do date maths', () => {
+    const overdue = {
+      fields: { id: 'x', title: 'Late thing', status: 'todo', due: '2026-08-01' },
+      description: '',
+      log: [],
+      archived: false,
+      path: 'tasks/x.md',
+      derived: {
+        momentum: 'stalled' as const,
+        hoursSinceUpdate: 400,
+        overdue: true,
+        attentionReasons: ['Overdue by 20 days', 'No update for 16 days'],
+      },
+    };
+    const index = taskIndex([overdue], [{ id: 'todo', name: 'To Do' }]);
+    expect(index).toContain('Overdue by 20 days');
+    expect(index).toContain('No update for 16 days');
+  });
+
+  it('says so when it is not showing every open task', () => {
+    const many = Array.from({ length: 50 }, (_, i) => ({
+      fields: { id: 't' + i, title: 'Task ' + i, status: 'todo' },
+      description: '',
+      log: [],
+      archived: false,
+      path: 'tasks/t.md',
+      derived: {
+        momentum: 'slowing' as const,
+        hoursSinceUpdate: i,
+        overdue: false,
+        attentionReasons: [],
+      },
+    }));
+    const index = taskIndex(many, [{ id: 'todo', name: 'To Do' }]);
+    expect(index).toMatch(/more open tasks are not listed/);
+    expect(index).toContain('search_tasks');
+  });
+
+  it('stays quiet about truncation when there is none', () => {
+    const index = taskIndex(personal.store.list(NOW), personal.store.lanes());
+    expect(index).not.toMatch(/not listed/);
+  });
+});
