@@ -80,7 +80,15 @@ including `.html` and `.svg`, which are documents that can carry script, and an 
 served inline from this origin would run where the app runs. Uploads are capped at 25 MB,
 and a name that already exists is never overwritten.
 
-The assistant cannot attach anything. Like lane and comment edits, this is UI-only.
+The assistant **can read** an attachment when the answer depends on it — a log file as
+text, a screenshot as a picture — through one extra read tool, `read_attachment`. It is
+bounded by the same workspace as everything else and cannot climb out of the folder.
+
+Whether it can see an *image* depends on the model you run: most small local models cannot,
+and one that cannot is told the picture could not be shown rather than left to invent what
+was in it. Text files work with any model.
+
+Attaching, editing and deleting files stay UI-only, like lane and comment edits.
 
 ## Due dates, with or without a time
 

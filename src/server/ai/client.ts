@@ -15,9 +15,21 @@ export interface ChatToolCall {
   function: { name: string; arguments: string };
 }
 
+/**
+ * A user message can carry pictures as well as words.
+ *
+ * The OpenAI shape: `content` becomes an array of parts. A tool result cannot carry an
+ * image — the spec has no place for one — so an attachment the model asked to see comes
+ * back as a follow-up user message instead. Servers that cannot do vision reject this,
+ * which the chat loop handles by retrying without the pictures.
+ */
+export type ContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } };
+
 export interface WireMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
+  content: string | ContentPart[] | null;
   tool_calls?: ChatToolCall[];
   tool_call_id?: string;
   name?: string;
@@ -137,7 +149,14 @@ export async function complete(baseUrl: string, opts: CompletionOptions): Promis
 
   const json = (await res.json()) as {
     choices?: {
-      message?: WireMessage & { reasoning_content?: string };
+      // A reply, not a request: the model answers in words, so content is a string here
+      // even though a message we *send* may carry image parts.
+      message?: {
+        role?: string;
+        content?: string | null;
+        tool_calls?: ChatToolCall[];
+        reasoning_content?: string;
+      };
       finish_reason?: string;
     }[];
   };

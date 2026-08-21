@@ -28,7 +28,10 @@ local-AI chat plugin. TypeScript everywhere: Node + Hono server, React + Vite we
    persist them.
 
 4. **One write path.** Every task mutation goes through the seven operations in
-   `src/server/tools/index.ts`. Routes are thin wrappers; the model calls the same ones.
+   `src/server/tools/index.ts`. The model's schema also carries one read tool that is not
+   one of them — `read_attachment`, the only way it can see a file someone attached. It
+   reads and never writes, and it was added knowing the cost the rest of this rule
+   describes; do not treat it as a precedent for the next one. Routes are thin wrappers; the model calls the same ones.
    Do not add an eighth tool without a strong reason — small models degrade as the tool
    count grows. Lane edits live in `src/server/tools/lanes.ts`, deliberately outside that
    set and deliberately absent from the model's schema: the assistant moves a task between

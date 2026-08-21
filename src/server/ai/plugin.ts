@@ -438,6 +438,7 @@ export class AiPlugin {
       tasks: scope.store.list(now),
       lanes: scope.store.lanes(),
       tools: scope.tools,
+      attachments: scope.attachments,
       autoApply: this.deps.settings().autoApplyWrites,
       now,
       ...(this.externalUrl ? { model: externalAiModel(this.deps.settings()) } : {}),

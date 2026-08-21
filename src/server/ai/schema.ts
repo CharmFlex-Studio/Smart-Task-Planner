@@ -95,6 +95,23 @@ export function toolSchemas(lanes: Lane[]): ToolSchema[] {
   {
     type: 'function',
     function: {
+      name: 'read_attachment',
+      description:
+        'Read a file attached to a task. Task text shows attachments as links like ' +
+        '![shot.png](attachments/shot.png) — pass just the filename. Only call this when ' +
+        'the answer actually depends on what is inside the file.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'The attachment filename, e.g. shot.png.' },
+        },
+        required: ['name'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'create_task',
       description: 'Create a new task. Only do this when the user clearly wants a new piece of work tracked.',
       parameters: {
