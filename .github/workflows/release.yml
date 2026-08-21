@@ -47,10 +47,13 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          # Sets the registry in .npmrc. No NODE_AUTH_TOKEN goes with it any more: an
-          # auth token in the environment would be used in preference to OIDC, quietly
-          # publishing the old way and producing no provenance.
-          registry-url: 'https://registry.npmjs.org'
+          # Deliberately NO registry-url. It looks harmless, but it makes setup-node write
+          #   //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+          # into .npmrc — and with no token in the environment npm sends that as an *empty*
+          # credential rather than falling through to OIDC. The registry then answers a
+          # publish with 404, which reads like the package is missing rather than like an
+          # auth failure. registry.npmjs.org is the default anyway, so there is nothing to
+          # set here.
 
       - name: Install dependencies
         run: npm ci
@@ -119,12 +122,41 @@ jobs:
       # Trusted publishing needs npm 11.5.1 or newer, and Node 22 ships npm 10. Pinned to
       # a major rather than @latest so a new npm major cannot change publish behaviour on
       # an unrelated day.
+      #
+      # The checks after it exist because every way this goes wrong fails as a 404 on
+      # publish, which reads like a missing package rather than a broken credential.
       - name: Use an npm that can publish with OIDC
         if: steps.decide.outputs.should_release == 'true'
         run: |
           set -euo pipefail
           npm install -g npm@^11.5.1
-          echo "npm $(npm -v)"
+          NPM_V="$(npm -v)"
+          echo "npm $NPM_V"
+
+          # The global install has to be the npm this shell actually resolves.
+          MAJOR="${NPM_V%%.*}"
+          REST="${NPM_V#*.}"
+          MINOR="${REST%%.*}"
+          if [ "$MAJOR" -lt 11 ] || { [ "$MAJOR" -eq 11 ] && [ "$MINOR" -lt 5 ]; }; then
+            echo "::error::npm $NPM_V cannot do trusted publishing; 11.5.1 or newer is needed."
+            exit 1
+          fi
+
+          # Set only when the job was granted id-token: write. Without it there is no OIDC
+          # token to exchange and npm would fall back to publishing unauthenticated.
+          if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+            echo "::error::No OIDC token available — the job is missing id-token: write."
+            exit 1
+          fi
+
+          # Any _authToken at all, even an empty one, is presented instead of doing the
+          # OIDC exchange. This is what a stray registry-url on setup-node leaves behind.
+          if [ -f .npmrc ] && grep -q '_authToken' .npmrc; then
+            echo "::error::.npmrc carries an _authToken line, which suppresses OIDC:"
+            grep -n '_authToken' .npmrc
+            exit 1
+          fi
+          echo "Ready to publish with OIDC.
 
       - name: Publish to npm
         if: steps.decide.outputs.should_release == 'true'
@@ -137,10 +169,18 @@ jobs:
             exit 0
           fi
           # No token: npm exchanges this job's OIDC identity for a short-lived credential
-          # and attaches a provenance attestation. If this fails with an auth error, the
-          # trusted publisher is not configured yet — npmjs.com > the package > Settings >
-          # Trusted Publisher > GitHub Actions, naming this repository and release.yml.
-          npm publish --access public
+          # and attaches a provenance attestation.
+          if ! npm publish --access public; then
+            echo "::error::npm rejected the publish."
+            echo "A 404 on PUT here means npm did not accept this job's identity, not that"
+            echo "the package is missing. Check the trusted publisher on npmjs.com:"
+            echo "  the package > Settings > Trusted Publisher > GitHub Actions"
+            echo "    Organization or user: ${GITHUB_REPOSITORY%%/*}"
+            echo "    Repository:           ${GITHUB_REPOSITORY##*/}"
+            echo "    Workflow filename:    release.yml"
+            echo "    Environment:          (empty)"
+            exit 1
+          fi
 
       - name: Create the release
         if: steps.decide.outputs.should_release == 'true'
