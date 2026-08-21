@@ -45,6 +45,9 @@ sections in the order they appear on the page, then a short `<script>` at the bo
   apply and the content is simply visible. Keep the hide and the reveal at comparable
   specificity: scoping only the hide once left `html.js .rise` outranking
   `.revealed .rise`, and the hero never appeared.
+- **The download button only works once a release exists.** The release is cut by
+  `.github/workflows/release.yml` when the `version` in `package.json` changes on `main`.
+  Until the first one lands, that link is a 404 — correct, but pointing at nothing.
 - **The download button points at a stable asset name.**
   `/releases/latest/download/watsmytask-installer.zip` is resolved by GitHub to whatever
   the newest release holds, but only while the asset is named exactly that. If the name in

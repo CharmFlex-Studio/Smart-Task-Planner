@@ -112,6 +112,21 @@ watsmytask                      # http://127.0.0.1:5123, opens your browser
 -h, --help            Show all options
 ```
 
+## Releasing
+
+Bump `version` in `package.json` and merge to `main`. That is the whole procedure.
+
+`.github/workflows/release.yml` runs the tests, builds, publishes to npm, then creates a
+GitHub Release with `watsmytask-installer.zip` attached. Merges that do not change the
+version do nothing: it checks whether a release already exists for the version in
+`package.json`, so it is idempotent and safe to re-run. Pushing a `v*` tag does the same
+for an exact commit, and running the workflow by hand builds everything without releasing
+anything — a dry run whose zip you can download from the run.
+
+It needs an `NPM_TOKEN` repository secret to publish. Without one it still cuts the
+release, but warns: the installers fetch `watsmytask@latest`, so they would keep
+installing the previous version.
+
 ## Work on it
 
 ```bash
