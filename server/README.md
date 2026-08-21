@@ -12,9 +12,16 @@ no dependencies, no framework. Open it in a browser or drop it on any static hos
 `.github/workflows/pages.yml` deploys this folder to GitHub Pages on every push to `main`
 that touches `server/`. It can also be run by hand from the Actions tab.
 
-The workflow enables Pages itself on the first run (`enablement: true` on the configure
-step). If an org policy blocks that, do the same thing by hand:
+**One-time setup, by a human with admin on the repo:**
 Settings → Pages → Build and deployment → Source: **GitHub Actions**.
+
+This cannot be automated. Creating a Pages site for the first time needs repository-admin
+rights, and the `GITHUB_TOKEN` a workflow runs under does not have them — the attempt
+fails with *"Resource not accessible by integration"*. Once the switch is flipped, every
+deploy after it runs unattended.
+
+Pick **GitHub Actions** as the source, not "Deploy from a branch" — the branch option
+ignores this workflow entirely and would serve the repo root instead of `server/`.
 
 The page then lives at `https://charmflex-studio.github.io/Smart-Task-Planner/`.
 

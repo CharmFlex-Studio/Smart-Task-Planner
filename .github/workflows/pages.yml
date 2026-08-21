@@ -7,10 +7,17 @@ name: Homepage
 # depend on the app's source, and rebuilding it on every commit to main would just make
 # the deploy history unreadable.
 #
-# `enablement: true` lets the configure step switch Pages on by itself the first time,
-# so there is no click to remember. It needs the `pages: write` permission below. If an
-# org policy blocks it the step still fails, and the fix is the manual equivalent:
-# Settings > Pages > Build and deployment > Source: GitHub Actions.
+# ONE-TIME SETUP, and it genuinely cannot be automated:
+#
+#   Settings > Pages > Build and deployment > Source: GitHub Actions
+#
+# Creating a Pages site for the first time is an admin-level operation, and GITHUB_TOKEN
+# is an installation token that does not carry repository-admin rights however generous
+# the `permissions:` block below is. `actions/configure-pages` has an `enablement: true`
+# input that tries anyway; on this repo it fails with
+#   "Create Pages site failed. Error: Resource not accessible by integration"
+# which is the ceiling being enforced, not a misconfiguration. So the switch gets flipped
+# once by a human with admin on the repo, and every run after that just works.
 
 on:
   push:
@@ -42,10 +49,8 @@ jobs:
       - name: Fail early if the page is missing
         run: test -f server/index.html || { echo "::error::server/index.html not found"; exit 1; }
 
+      # Fails until Pages is enabled by hand, once — see the note at the top.
       - uses: actions/configure-pages@v5
-        with:
-          # Turn Pages on if it has never been enabled, rather than failing here.
-          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
