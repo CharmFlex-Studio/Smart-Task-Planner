@@ -7,9 +7,10 @@ name: Homepage
 # depend on the app's source, and rebuilding it on every commit to main would just make
 # the deploy history unreadable.
 #
-# One-time setup, which cannot be done from a workflow: Settings > Pages > Build and
-# deployment > Source: GitHub Actions. Until that is switched over, this job fails at
-# the configure step.
+# `enablement: true` lets the configure step switch Pages on by itself the first time,
+# so there is no click to remember. It needs the `pages: write` permission below. If an
+# org policy blocks it the step still fails, and the fix is the manual equivalent:
+# Settings > Pages > Build and deployment > Source: GitHub Actions.
 
 on:
   push:
@@ -42,6 +43,9 @@ jobs:
         run: test -f server/index.html || { echo "::error::server/index.html not found"; exit 1; }
 
       - uses: actions/configure-pages@v5
+        with:
+          # Turn Pages on if it has never been enabled, rather than failing here.
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:

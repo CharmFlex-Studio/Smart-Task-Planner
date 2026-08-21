@@ -12,9 +12,9 @@ no dependencies, no framework. Open it in a browser or drop it on any static hos
 `.github/workflows/pages.yml` deploys this folder to GitHub Pages on every push to `main`
 that touches `server/`. It can also be run by hand from the Actions tab.
 
-**One-time setup, which a workflow cannot do for itself:**
-Settings → Pages → Build and deployment → Source: **GitHub Actions**. Until that is
-switched over, the deploy fails at the configure step.
+The workflow enables Pages itself on the first run (`enablement: true` on the configure
+step). If an org policy blocks that, do the same thing by hand:
+Settings → Pages → Build and deployment → Source: **GitHub Actions**.
 
 The page then lives at `https://charmflex-studio.github.io/Smart-Task-Planner/`.
 
