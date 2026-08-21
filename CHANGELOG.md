@@ -14,6 +14,14 @@ those three bytes.
 keeping the indentation. A second Enter on an empty item ends the list. Tab and Shift-Tab
 indent and outdent an item.
 
+**⌘-click a link to open it**, in the editor as well as the reading view. A plain click
+still puts the caret where you clicked, so the text under a link stays reachable. Links
+that are not `http`, `https`, `mailto` or a path inside the vault are refused rather than
+followed.
+
+**The toolbar is icons rather than characters** — `❝` and `🔗` were landing as a different
+typeface and a colour emoji next to everything else.
+
 **Wrapped list items hang under their text** instead of falling back to the margin, quotes
 carry a bar down every line they wrap onto, and fenced code reads as a block.
 

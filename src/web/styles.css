@@ -1200,18 +1200,19 @@ code { font-family: var(--mono); font-size: 12.5px; }
   flex-wrap: wrap;
 }
 .md-tool {
-  min-width: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
   height: 1.75rem;
-  padding: 0 0.35rem;
+  padding: 0;
   border: 1px solid transparent;
   border-radius: 5px;
   background: none;
   color: var(--muted);
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  line-height: 1;
   cursor: pointer;
 }
+.md-tool .icon { display: block; }
 .md-tool:hover { background: var(--panel-3); color: var(--text); }
 .md-tool:active { background: var(--accent-soft); color: var(--accent); }
 .md-hint {

@@ -19,25 +19,27 @@ import { livePreview } from '../editor/live-preview.js';
 import { continuation, shiftIndent } from '../editor/list-commands.js';
 import { editorTheme } from '../editor/theme.js';
 import { applyWrap, applyLinePrefix, type Selection } from '../markdown-edit.js';
+import { linkClicking } from '../editor/link-click.js';
+import { Icon, type IconName } from './Icon.js';
 
 interface Action {
   /** KeyboardEvent.code, not .key: layout-independent, and ⌘⇧8 arrives as "*" on US. */
   code: string;
   shift: boolean;
-  label: string;
+  icon: IconName;
   title: string;
   run: (value: string, sel: Selection) => { value: string; selection: Selection };
 }
 
 const ACTIONS: Action[] = [
-  { code: 'KeyB', shift: false, label: 'B', title: 'Bold  ⌘B', run: (v, s) => applyWrap(v, s, '**', 'bold text') },
-  { code: 'KeyI', shift: false, label: 'I', title: 'Italic  ⌘I', run: (v, s) => applyWrap(v, s, '*', 'italic text') },
-  { code: 'KeyE', shift: false, label: '</>', title: 'Code  ⌘E', run: (v, s) => applyWrap(v, s, '`', 'code') },
-  { code: 'KeyK', shift: false, label: '🔗', title: 'Link  ⌘K', run: (v, s) => applyWrap(v, s, ['[', '](https://)'], 'label') },
-  { code: 'Digit8', shift: true, label: '•', title: 'Bullet list  ⌘⇧8', run: (v, s) => applyLinePrefix(v, s, '- ') },
-  { code: 'Digit7', shift: true, label: '1.', title: 'Numbered list  ⌘⇧7', run: (v, s) => applyLinePrefix(v, s, '1. ') },
-  { code: 'KeyL', shift: true, label: '☑', title: 'Checklist  ⌘⇧L', run: (v, s) => applyLinePrefix(v, s, '- [ ] ') },
-  { code: 'Period', shift: true, label: '❝', title: 'Quote  ⌘⇧.', run: (v, s) => applyLinePrefix(v, s, '> ') },
+  { code: 'KeyB', shift: false, icon: 'bold', title: 'Bold  ⌘B', run: (v, s) => applyWrap(v, s, '**', 'bold text') },
+  { code: 'KeyI', shift: false, icon: 'italic', title: 'Italic  ⌘I', run: (v, s) => applyWrap(v, s, '*', 'italic text') },
+  { code: 'KeyE', shift: false, icon: 'code', title: 'Code  ⌘E', run: (v, s) => applyWrap(v, s, '`', 'code') },
+  { code: 'KeyK', shift: false, icon: 'link', title: 'Link  ⌘K', run: (v, s) => applyWrap(v, s, ['[', '](https://)'], 'label') },
+  { code: 'Digit8', shift: true, icon: 'bullet-list', title: 'Bullet list  ⌘⇧8', run: (v, s) => applyLinePrefix(v, s, '- ') },
+  { code: 'Digit7', shift: true, icon: 'numbered-list', title: 'Numbered list  ⌘⇧7', run: (v, s) => applyLinePrefix(v, s, '1. ') },
+  { code: 'KeyL', shift: true, icon: 'checklist', title: 'Checklist  ⌘⇧L', run: (v, s) => applyLinePrefix(v, s, '- [ ] ') },
+  { code: 'Period', shift: true, icon: 'quote', title: 'Quote  ⌘⇧.', run: (v, s) => applyLinePrefix(v, s, '> ') },
 ];
 
 export function MarkdownEditor({
@@ -140,6 +142,7 @@ export function MarkdownEditor({
       ]),
       markdown({ base: markdownLanguage }),
       livePreview(),
+      linkClicking(),
       editorTheme,
       EditorView.lineWrapping,
       EditorView.updateListener.of((u) => {
@@ -221,10 +224,10 @@ export function MarkdownEditor({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => run(a)}
           >
-            {a.label}
+            <Icon name={a.icon} size={15} />
           </button>
         ))}
-        <span className="md-hint">live markdown</span>
+        <span className="md-hint" title="⌘-click a link to open it">live markdown</span>
       </div>
       <div
         ref={host}

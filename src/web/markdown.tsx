@@ -14,17 +14,9 @@
  */
 
 import React from 'react';
+import { safeUrl } from './safe-url.js';
 
 /* ------------------------------------------------------------------- inline */
-
-/** Only ever hand an href to the browser that cannot execute anything. */
-function safeHref(raw: string): string | null {
-  const url = raw.trim();
-  if (/^(https?:|mailto:)/i.test(url)) return url;
-  // A bare domain or an in-vault relative link is fine; a scheme we did not allow is not.
-  if (/^[a-z][a-z0-9+.-]*:/i.test(url)) return null;
-  return url;
-}
 
 const INLINE = /(`[^`]+`)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\n]+\*)|(_[^_\n]+_)|(\[[^\]]*\]\([^)\s]*\))/;
 
@@ -49,7 +41,7 @@ function renderInline(text: string, key = 0): React.ReactNode[] {
     } else if (tok.startsWith('[')) {
       const split = tok.indexOf('](');
       const label = tok.slice(1, split);
-      const href = safeHref(tok.slice(split + 2, -1));
+      const href = safeUrl(tok.slice(split + 2, -1));
       out.push(
         href ? (
           <a key={i++} href={href} target="_blank" rel="noreferrer noopener">

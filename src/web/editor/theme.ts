@@ -38,7 +38,13 @@ export const editorTheme = EditorView.theme({
     borderRadius: '4px',
     padding: '0.05em 0.3em',
   },
-  '.cm-md-link': { color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: '2px' },
+  '.cm-md-link': {
+    color: 'var(--accent)',
+    textDecoration: 'underline',
+    textUnderlineOffset: '2px',
+  },
+  // Only a modifier-click follows a link, so only then does it look followable.
+  '.cm-md-link:hover': { textDecorationThickness: '2px' },
   '.cm-md-quote': { color: 'var(--muted)', fontStyle: 'italic' },
   '.cm-md-h1': { fontSize: '1.3em', fontWeight: '600' },
   '.cm-md-h2': { fontSize: '1.18em', fontWeight: '600' },

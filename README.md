@@ -70,9 +70,13 @@ checklists, fenced code with its language, quotes, headings and tables.
 **The editor renders as you type.** Bold looks bold and headings look like headings in the
 box you are typing in, with the markers hidden — except on the line the cursor is on,
 where they come back so a stray asterisk is something you can see and fix. Checkboxes tick
-with a click, Enter carries a list on and a second Enter ends it, Tab and Shift-Tab change
-an item's level, and there is a toolbar with shortcuts (⌘B, ⌘I, ⌘E, ⌘K, ⌘⇧8, ⌘⇧7, ⌘⇧L,
-⌘⇧.).
+with a click, ⌘-click opens a link, Enter carries a list on and a second Enter ends it,
+Tab and Shift-Tab change an item's level, and there is a toolbar with shortcuts (⌘B, ⌘I,
+⌘E, ⌘K, ⌘⇧8, ⌘⇧7, ⌘⇧L, ⌘⇧.).
+
+Every URL out of a task file — followed from the reading view or ⌘-clicked in the editor —
+goes through one validator in `src/web/safe-url.ts`. One, because two that drift apart is
+how a `javascript:` link ends up clickable in one of them.
 
 The document the editor holds is the markdown text and nothing else: every effect is drawn
 over it and nothing rewrites the buffer, which is what keeps a save surgical. A rich-text
