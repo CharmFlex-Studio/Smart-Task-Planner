@@ -1,0 +1,78 @@
+{
+  "name": "watsmytask",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A local task planner whose database is a folder of markdown files, with an optional local-AI chat plugin.",
+  "keywords": [
+    "tasks",
+    "todo",
+    "planner",
+    "kanban",
+    "markdown",
+    "local-first",
+    "offline",
+    "self-hosted",
+    "llama.cpp"
+  ],
+  "license": "MIT",
+  "author": "CharmFlex Studio",
+  "homepage": "https://github.com/CharmFlex-Studio/Smart-Task-Planner#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CharmFlex-Studio/Smart-Task-Planner.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CharmFlex-Studio/Smart-Task-Planner/issues"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "bin": {
+    "watsmytask": "bin/watsmytask.mjs"
+  },
+  "files": [
+    "bin/",
+    "dist/server/",
+    "dist/shared/",
+    "dist/web/",
+    "setup/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "tsx watch src/server/cli.ts --no-open",
+    "dev:web": "vite",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && npm run build:web && npm run build:server",
+    "build:web": "vite build",
+    "build:server": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "start": "node bin/watsmytask.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "chokidar": "^4.0.3",
+    "diff": "^7.0.0",
+    "fflate": "^0.8.2",
+    "hono": "^4.6.14",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/diff": "^6.0.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tsc-alias": "^1.8.16",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^2.1.8"
+  }
+}

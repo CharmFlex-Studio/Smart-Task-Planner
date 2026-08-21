@@ -1,0 +1,88 @@
+watsmytask - how to install
+===========================
+
+Your tasks, kept as plain text files you can read, edit and back up yourself.
+
+You do NOT need to know anything technical to install this. Pick your computer
+below and follow the three steps. It takes about two minutes.
+
+
+-------------------------------------------------------------------------
+ON A MAC
+-------------------------------------------------------------------------
+
+1. Double-click:   macOS - Install watsmytask.command
+
+2. Your Mac will probably refuse the first time, saying it cannot check the
+   file for malware. This is normal. It says that about anything not sold
+   through the App Store. To allow it:
+
+      Open  System Settings  >  Privacy & Security
+      Scroll down to the Security section
+      You will see a line about "macOS - Install watsmytask.command"
+      Click  Open Anyway
+      Then double-click the file again
+
+   On an older Mac there is no such line. Instead, right-click the file,
+   choose Open, and click Open in the box that appears.
+
+3. A black window opens and asks a question or two. Press Return to accept
+   each one. When it finishes, watsmytask opens in your web browser.
+
+Afterwards, a file called "watsmytask" appears in your Applications folder.
+Double-click that any time you want to start it again.
+
+
+-------------------------------------------------------------------------
+ON WINDOWS
+-------------------------------------------------------------------------
+
+1. Double-click:   Windows - Install watsmytask.bat
+
+2. Windows will probably show a blue box saying "Windows protected your PC".
+   This is normal. It says that about any program without an expensive
+   certificate. To allow it:
+
+      Click  More info
+      Click  Run anyway
+
+3. A black window opens and asks a question or two. Press Enter to accept
+   each one. When it finishes, watsmytask opens in your web browser.
+
+Afterwards, a "watsmytask" icon appears on your Desktop. Double-click that
+any time you want to start it again.
+
+
+-------------------------------------------------------------------------
+WHAT IT INSTALLS
+-------------------------------------------------------------------------
+
+The installer needs a free program called Node in order to run watsmytask.
+If your computer does not already have it, the installer offers to fetch it
+for you. Say yes and it handles the rest.
+
+You will never be asked for your password. Everything is installed inside
+your own user folder.
+
+
+-------------------------------------------------------------------------
+WHERE YOUR TASKS GO
+-------------------------------------------------------------------------
+
+Your tasks are ordinary text files in a folder called "watsmytask-vault",
+inside your home folder. You can open them in any text editor. Copy that
+folder somewhere safe and you have backed up everything.
+
+Nothing is ever sent over the internet. watsmytask runs entirely on your own
+computer and cannot be reached from any other machine.
+
+
+-------------------------------------------------------------------------
+IF SOMETHING GOES WRONG
+-------------------------------------------------------------------------
+
+The black window stays open and shows what happened. Read the last few
+lines - it will usually say exactly what to do.
+
+More help, and how to uninstall:
+https://github.com/CharmFlex-Studio/Smart-Task-Planner/tree/main/setup
