@@ -140,9 +140,25 @@ version do nothing: it checks whether a release already exists for the version i
 for an exact commit, and running the workflow by hand builds everything without releasing
 anything — a dry run whose zip you can download from the run.
 
-It needs an `NPM_TOKEN` repository secret to publish. Without one it still cuts the
-release, but warns: the installers fetch `watsmytask@latest`, so they would keep
-installing the previous version.
+Publishing to npm uses **trusted publishing** — no token and no secret in this
+repository. The job mints a short-lived OIDC token, npm verifies it against a publisher
+configured on the package, and every release carries a provenance attestation naming the
+workflow and commit that built it.
+
+Configured once, on npmjs.com → the package → **Settings → Trusted Publisher → GitHub
+Actions**:
+
+| Field | Value |
+|---|---|
+| Organization or user | `CharmFlex-Studio` |
+| Repository | `Smart-Task-Planner` |
+| Workflow filename | `release.yml` |
+| Environment | *(leave empty)* |
+
+That configuration names the workflow **file**, so renaming `release.yml` breaks
+publishing until the setting is renamed to match. The job needs `id-token: write`, which
+it has, and an npm newer than the one Node 22 ships — the workflow installs `npm@^11.5.1`
+before publishing.
 
 ## Work on it
 

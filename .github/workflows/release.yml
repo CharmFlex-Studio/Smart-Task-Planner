@@ -9,6 +9,12 @@ name: Release
 #
 # Pushing a v* tag does the same, for when a release should be cut from an exact commit.
 #
+# npm is published to with TRUSTED PUBLISHING: no token, no secret. The job mints a
+# short-lived OIDC token that npm verifies against a publisher configured on the package,
+# and npm attaches a provenance attestation saying which workflow at which commit built
+# it. That configuration names this file, so renaming release.yml breaks publishing until
+# the setting on npmjs.com is renamed to match.
+#
 # ONE job with linear steps rather than several, because the order carries a guarantee:
 # the installers inside the zip run `npm install watsmytask@latest`, so npm has to have
 # the new version BEFORE the release advertising it exists. As separate jobs that becomes
@@ -23,6 +29,7 @@ on:
 
 permissions:
   contents: write   # create the tag, the release, and upload its asset
+  id-token: write   # mint the OIDC token npm trusted publishing authenticates with
 
 concurrency:
   group: release
@@ -40,6 +47,9 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+          # Sets the registry in .npmrc. No NODE_AUTH_TOKEN goes with it any more: an
+          # auth token in the environment would be used in preference to OIDC, quietly
+          # publishing the old way and producing no provenance.
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
@@ -106,23 +116,30 @@ jobs:
 
       # --- past here only when there is genuinely a new version --------------------
 
+      # Trusted publishing needs npm 11.5.1 or newer, and Node 22 ships npm 10. Pinned to
+      # a major rather than @latest so a new npm major cannot change publish behaviour on
+      # an unrelated day.
+      - name: Use an npm that can publish with OIDC
+        if: steps.decide.outputs.should_release == 'true'
+        run: |
+          set -euo pipefail
+          npm install -g npm@^11.5.1
+          echo "npm $(npm -v)"
+
       - name: Publish to npm
         if: steps.decide.outputs.should_release == 'true'
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION: ${{ steps.decide.outputs.version }}
         run: |
           set -euo pipefail
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "::warning::NPM_TOKEN is not set — skipping the npm publish."
-            echo "The installers fetch watsmytask@latest, so they will keep installing the"
-            echo "previously published version until this one is published by hand."
-            exit 0
-          fi
           if npm view "watsmytask@$VERSION" version >/dev/null 2>&1; then
             echo "watsmytask@$VERSION is already on npm — nothing to publish."
             exit 0
           fi
+          # No token: npm exchanges this job's OIDC identity for a short-lived credential
+          # and attaches a provenance attestation. If this fails with an auth error, the
+          # trusted publisher is not configured yet — npmjs.com > the package > Settings >
+          # Trusted Publisher > GitHub Actions, naming this repository and release.yml.
           npm publish --access public
 
       - name: Create the release
