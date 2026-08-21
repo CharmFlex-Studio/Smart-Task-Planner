@@ -24,6 +24,43 @@ const dateLine = (now: Date) =>
   });
 
 /** One line per task: enough to refer to it, not enough to reason about it. */
+/**
+ * How many tasks sit in each column, counted here so the model never has to.
+ *
+ * The index below is not a countable thing: it holds open tasks only, and it stops at forty.
+ * Asking a model "how many are in Done" against a list containing no done tasks gets a
+ * confident zero, and asking it to count forty lines gets a number that is off by two — the
+ * same reason "Overdue by 2 days" is worked out here rather than left as date arithmetic.
+ *
+ * Counted over every file in the workspace, so it stays right however long the board grows.
+ */
+export function laneTally(tasks: Task[], lanes: Lane[] = []): string {
+  const live = tasks.filter((t) => !t.archived);
+
+  const counts = new Map<string, number>();
+  for (const task of live) {
+    counts.set(task.fields.status, (counts.get(task.fields.status) ?? 0) + 1);
+  }
+
+  const rows = lanes.map((lane) => `- ${lane.name}: ${counts.get(lane.id) ?? 0}`);
+  // A status no lane claims still gets a row. Its tasks are real and on the board — the
+  // board view merges such a lane back in — so leaving them out would make the rows
+  // disagree with the total, which is worse than an oddly-named column.
+  for (const [status, count] of counts) {
+    if (!lanes.some((lane) => lane.id === status)) rows.push(`- ${status}: ${count}`);
+  }
+
+  const doneLaneId = lanes.find((lane) => lane.done)?.id;
+  const done = doneLaneId === undefined ? 0 : (counts.get(doneLaneId) ?? 0);
+  const archived = tasks.length - live.length;
+
+  const summary =
+    `${live.length - done} open, ${done} done, ${live.length} on the board.` +
+    (archived > 0 ? ` ${archived} archived, not counted above.` : '');
+
+  return [...rows, summary].join('\n');
+}
+
 export function taskIndex(tasks: Task[], lanes: Lane[] = []): string {
   const name = laneNamer(lanes);
   const live = tasks
@@ -142,9 +179,17 @@ thing you must never do here. Two examples of the shape:
   -> search_tasks("payments"), then get_task on the one in Blocked.
 
 You do not need a tool for questions the index already answers. What is overdue, what has
-gone stale, how many sit in a column: read them off the index and count the lines. Do not
-work out dates yourself — every "Overdue by" and "No update for" below is already correct,
-and recomputing them from today's date is how you get the number wrong.
+gone stale, which tasks are in a column: read them off the index. Do not work out dates
+yourself — every "Overdue by" and "No update for" below is already correct, and recomputing
+them from today's date is how you get the number wrong.
+
+HOW MANY
+Never count the index. It lists open tasks only, it stops at forty, and counting its lines
+is how you end up telling someone Done is empty when eleven tasks are sitting in it.
+
+TASK COUNTS below is computed from every file in the workspace and is exact. Any question
+of the form "how many" — in a column, open, done, altogether — is answered by reading one
+number off it. If a column is not listed there, it has no tasks.
 
 WHERE YOU ARE
 You are working in the "${workspace}" workspace. The user may keep other workspaces; you
@@ -166,6 +211,9 @@ Any tool that changes a task is shown to the user as a diff they must approve. N
 So: make the call once, then describe it as something you have DRAFTED or PROPOSED, waiting for them. Say "I've drafted a progress note for X" or "Here's the change for you to approve".
 
 Never say "I have recorded", "I have saved", "I have updated", "done", or anything else implying the change already happened. It has not. Do not repeat a call you have already made.
+
+TASK COUNTS IN "${workspace}" (exact, every file counted)
+${laneTally(tasks, lanes)}
 
 INDEX OF OPEN TASKS IN "${workspace}"
 ${taskIndex(tasks, lanes)}`;
