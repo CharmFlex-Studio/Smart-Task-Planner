@@ -1185,15 +1185,10 @@ code { font-family: var(--mono); font-size: 12.5px; }
   overflow: hidden;
 }
 .md-editor:focus-within { border-color: var(--accent); }
-.md-editor textarea {
-  display: block;
-  width: 100%;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  resize: vertical;
-}
-.md-editor textarea:focus { outline: none; box-shadow: none; }
+/* CodeMirror's own surface. It grows with the content and scrolls past a point, so a
+   long description does not push the Save button off the screen. */
+.md-surface { min-height: 6rem; max-height: 60vh; overflow: auto; }
+.md-surface .cm-editor { height: 100%; }
 
 .md-toolbar {
   display: flex;

@@ -1,6 +1,6 @@
 {
   "name": "watsmytask",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "A local task planner whose database is a folder of markdown files, with an optional local-AI chat plugin.",
   "keywords": [
@@ -54,7 +54,14 @@
     "prepack": "npm run build"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.0",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.9",
     "@hono/node-server": "^1.13.7",
+    "@lezer/common": "^1.5.2",
+    "@lezer/highlight": "^1.2.3",
     "chokidar": "^4.0.3",
     "diff": "^7.0.0",
     "fflate": "^0.8.2",

@@ -1,14 +1,22 @@
 /**
- * A textarea that knows what markdown is.
+ * The editor for a description or a comment.
  *
- * Not a rich-text editor. It stays a textarea on purpose: the file on disk is the truth,
- * and an editor that reformats a whole block on save would quietly rewrite spacing,
- * comments and frontmatter someone put there by hand. The toolbar and the shortcuts only
- * ever insert the characters you would have typed yourself, so what is saved is what you
- * can see.
+ * CodeMirror rather than a textarea, for one reason: a textarea cannot hide a character,
+ * and hiding the markers is the whole point of live preview. What it is NOT is a
+ * rich-text editor — the document held here is the markdown text and nothing else, and
+ * every effect on screen is a decoration over it. Nothing normalises the buffer, so what
+ * is saved is what was typed, which is what lets the file on disk stay the truth.
+ *
+ * The toolbar still works on the text, through the same pure helpers the textarea used.
  */
 
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { EditorState, type Extension } from '@codemirror/state';
+import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
+import { history, historyKeymap, defaultKeymap } from '@codemirror/commands';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { livePreview } from '../editor/live-preview.js';
+import { editorTheme } from '../editor/theme.js';
 import { applyWrap, applyLinePrefix, type Selection } from '../markdown-edit.js';
 
 interface Action {
@@ -21,62 +29,14 @@ interface Action {
 }
 
 const ACTIONS: Action[] = [
-  {
-    code: 'KeyB',
-    shift: false,
-    label: 'B',
-    title: 'Bold  ⌘B',
-    run: (v, s) => applyWrap(v, s, '**', 'bold text'),
-  },
-  {
-    code: 'KeyI',
-    shift: false,
-    label: 'I',
-    title: 'Italic  ⌘I',
-    run: (v, s) => applyWrap(v, s, '*', 'italic text'),
-  },
-  {
-    code: 'KeyE',
-    shift: false,
-    label: '</>',
-    title: 'Code  ⌘E',
-    run: (v, s) => applyWrap(v, s, '`', 'code'),
-  },
-  {
-    code: 'KeyK',
-    shift: false,
-    label: '🔗',
-    title: 'Link  ⌘K',
-    run: (v, s) => applyWrap(v, s, ['[', '](https://)'], 'label'),
-  },
-  {
-    code: 'Digit8',
-    shift: true,
-    label: '•',
-    title: 'Bullet list  ⌘⇧8',
-    run: (v, s) => applyLinePrefix(v, s, '- '),
-  },
-  {
-    code: 'Digit7',
-    shift: true,
-    label: '1.',
-    title: 'Numbered list  ⌘⇧7',
-    run: (v, s) => applyLinePrefix(v, s, '1. '),
-  },
-  {
-    code: 'KeyL',
-    shift: true,
-    label: '☑',
-    title: 'Checklist  ⌘⇧L',
-    run: (v, s) => applyLinePrefix(v, s, '- [ ] '),
-  },
-  {
-    code: 'Period',
-    shift: true,
-    label: '❝',
-    title: 'Quote  ⌘⇧.',
-    run: (v, s) => applyLinePrefix(v, s, '> '),
-  },
+  { code: 'KeyB', shift: false, label: 'B', title: 'Bold  ⌘B', run: (v, s) => applyWrap(v, s, '**', 'bold text') },
+  { code: 'KeyI', shift: false, label: 'I', title: 'Italic  ⌘I', run: (v, s) => applyWrap(v, s, '*', 'italic text') },
+  { code: 'KeyE', shift: false, label: '</>', title: 'Code  ⌘E', run: (v, s) => applyWrap(v, s, '`', 'code') },
+  { code: 'KeyK', shift: false, label: '🔗', title: 'Link  ⌘K', run: (v, s) => applyWrap(v, s, ['[', '](https://)'], 'label') },
+  { code: 'Digit8', shift: true, label: '•', title: 'Bullet list  ⌘⇧8', run: (v, s) => applyLinePrefix(v, s, '- ') },
+  { code: 'Digit7', shift: true, label: '1.', title: 'Numbered list  ⌘⇧7', run: (v, s) => applyLinePrefix(v, s, '1. ') },
+  { code: 'KeyL', shift: true, label: '☑', title: 'Checklist  ⌘⇧L', run: (v, s) => applyLinePrefix(v, s, '- [ ] ') },
+  { code: 'Period', shift: true, label: '❝', title: 'Quote  ⌘⇧.', run: (v, s) => applyLinePrefix(v, s, '> ') },
 ];
 
 export function MarkdownEditor({
@@ -85,7 +45,7 @@ export function MarkdownEditor({
   onCommit,
   onCancel,
   ariaLabel,
-  rows,
+  minHeight,
   placeholder,
   autoFocus,
 }: {
@@ -94,41 +54,99 @@ export function MarkdownEditor({
   onCommit?: () => void;
   onCancel?: () => void;
   ariaLabel: string;
-  rows?: number;
+  minHeight?: string;
   placeholder?: string;
   autoFocus?: boolean;
 }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
+  const host = useRef<HTMLDivElement>(null);
+  const view = useRef<EditorView | null>(null);
 
-  const run = useCallback(
-    (action: Action) => {
-      const el = ref.current;
-      if (!el) return;
-      const sel: Selection = { start: el.selectionStart, end: el.selectionEnd };
-      const next = action.run(value, sel);
-      onChange(next.value);
-      // Put the caret where the writer expects it, after React has painted the new value.
-      requestAnimationFrame(() => {
-        el.focus();
-        el.setSelectionRange(next.selection.start, next.selection.end);
-      });
-    },
-    [value, onChange],
-  );
+  // Held in refs so the extensions built once below always call the current ones, rather
+  // than closing over the first render's props.
+  const latest = useRef({ onChange, onCommit, onCancel });
+  useEffect(() => {
+    latest.current = { onChange, onCommit, onCancel };
+  });
 
-  const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Escape' && onCancel) {
-      event.preventDefault();
-      onCancel();
-      return;
-    }
-    const mod = event.metaKey || event.ctrlKey;
-    if (!mod) return;
-    if (event.key === 'Enter' && onCommit) {
-      event.preventDefault();
-      onCommit();
-      return;
-    }
+  useEffect(() => {
+    if (!host.current) return;
+
+    const extensions: Extension[] = [
+      history(),
+      keymap.of([
+        {
+          key: 'Mod-Enter',
+          run: () => {
+            latest.current.onCommit?.();
+            return !!latest.current.onCommit;
+          },
+        },
+        {
+          key: 'Escape',
+          run: () => {
+            latest.current.onCancel?.();
+            return !!latest.current.onCancel;
+          },
+        },
+        ...historyKeymap,
+        // Filtered so the editor keeps Mod-Enter and Escape for saving and cancelling.
+        ...defaultKeymap.filter((b) => b.key !== 'Mod-Enter' && b.key !== 'Escape'),
+      ]),
+      markdown({ base: markdownLanguage }),
+      livePreview(),
+      editorTheme,
+      EditorView.lineWrapping,
+      EditorView.updateListener.of((u) => {
+        if (u.docChanged) latest.current.onChange(u.state.doc.toString());
+      }),
+      EditorState.allowMultipleSelections.of(false),
+      ...(placeholder ? [cmPlaceholder(placeholder)] : []),
+    ];
+
+    const v = new EditorView({
+      state: EditorState.create({ doc: value, extensions }),
+      parent: host.current,
+    });
+    view.current = v;
+    if (autoFocus) v.focus();
+
+    return () => {
+      v.destroy();
+      view.current = null;
+    };
+    // Built once for the life of the component; `value` is synced by the effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Take in a value changed from outside — a different task opened, or the composer
+  // cleared after posting. Never echo back what the editor itself just produced, which
+  // would fight the cursor on every keystroke.
+  useEffect(() => {
+    const v = view.current;
+    if (!v) return;
+    const current = v.state.doc.toString();
+    if (current === value) return;
+    v.dispatch({
+      changes: { from: 0, to: current.length, insert: value },
+      selection: { anchor: Math.min(v.state.selection.main.anchor, value.length) },
+    });
+  }, [value]);
+
+  const run = useCallback((action: Action) => {
+    const v = view.current;
+    if (!v) return;
+    const doc = v.state.doc.toString();
+    const { from, to } = v.state.selection.main;
+    const next = action.run(doc, { start: from, end: to });
+    v.dispatch({
+      changes: { from: 0, to: doc.length, insert: next.value },
+      selection: { anchor: next.selection.start, head: next.selection.end },
+    });
+    v.focus();
+  }, []);
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!(event.metaKey || event.ctrlKey)) return;
     const action = ACTIONS.find((a) => a.code === event.code && a.shift === event.shiftKey);
     if (action) {
       event.preventDefault();
@@ -146,24 +164,23 @@ export function MarkdownEditor({
             className="md-tool"
             title={a.title}
             aria-label={a.title}
-            // Keep the textarea's selection: a mousedown that moves focus would collapse it.
+            // Keep the editor's selection: a mousedown that moves focus would collapse it.
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => run(a)}
           >
             {a.label}
           </button>
         ))}
-        <span className="md-hint">markdown</span>
+        <span className="md-hint">live markdown</span>
       </div>
-      <textarea
-        ref={ref}
-        value={value}
-        rows={rows ?? Math.max(4, value.split('\n').length + 1)}
-        autoFocus={autoFocus}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
-        onChange={(e) => onChange(e.target.value)}
+      <div
+        ref={host}
+        className="md-surface"
+        style={minHeight ? { minHeight } : undefined}
         onKeyDown={onKeyDown}
+        role="textbox"
+        aria-multiline="true"
+        aria-label={ariaLabel}
       />
     </div>
   );

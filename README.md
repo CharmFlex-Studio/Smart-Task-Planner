@@ -65,10 +65,17 @@ task that cannot be seen is worse than a column you did not ask for.
 ## Rich text, without leaving markdown
 
 Descriptions and comments render markdown: emphasis, inline code, links, nested lists,
-checklists, fenced code with its language, quotes, headings and tables. The editor stays a
-textarea with a toolbar and shortcuts (⌘B, ⌘I, ⌘E, ⌘K, ⌘⇧8, ⌘⇧7, ⌘⇧L, ⌘⇧.) that insert
-the characters you would have typed yourself — so what is saved is what you can see, and
-your own formatting is never rewritten by an editor normalising a block.
+checklists, fenced code with its language, quotes, headings and tables.
+
+**The editor renders as you type.** Bold looks bold and headings look like headings in the
+box you are typing in, with the markers hidden — except on the line the cursor is on,
+where they come back so a stray asterisk is something you can see and fix. There is a
+toolbar and shortcuts too (⌘B, ⌘I, ⌘E, ⌘K, ⌘⇧8, ⌘⇧7, ⌘⇧L, ⌘⇧.).
+
+The document the editor holds is the markdown text and nothing else: every effect is drawn
+over it and nothing rewrites the buffer, which is what keeps a save surgical. A rich-text
+editor that serialised back to markdown would normalise the whole block and quietly
+rewrite spacing and formatting you chose.
 
 Ticking a checkbox in a description writes through `setField` like any other edit: three
 characters change, it lands as a diff and as an undoable commit. Checkboxes in *comments*

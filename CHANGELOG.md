@@ -4,6 +4,21 @@ What changed for someone using watsmytask. The release workflow reads the sectio
 the version being released and puts it in the release notes, so a version with no section
 here ships without a "what's new" — keep it up to date as part of the version bump.
 
+## 0.3.0
+
+**The editor shows formatted text as you type.** Descriptions and comments no longer show
+raw markdown while you are editing them: bold looks bold, headings look like headings,
+bullets are bullets and checkboxes are boxes, in the same box you are typing in. The
+markers reappear on the line the cursor is on, so a stray asterisk is still something you
+can see and fix rather than guess at.
+
+The document is still exactly the markdown text — everything on screen is drawn over it,
+nothing rewrites it. Saving changes only the characters you changed, as before.
+
+**The running version is shown** at the bottom of the sidebar, under the vault path. An
+installer pins the version it shipped with, so running an older copy is a normal thing to
+be doing, and until now there was no way to tell that from a feature being broken.
+
 ## 0.2.0
 
 **Descriptions and comments are rich text now.** They render markdown: bold and italic,

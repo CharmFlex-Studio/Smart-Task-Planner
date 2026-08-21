@@ -300,7 +300,7 @@ function Composer({ taskId }: { taskId: string }) {
         value={text}
         onChange={setText}
         onCommit={() => void submit()}
-        rows={3}
+        minHeight="4.5rem"
         placeholder="Add a comment…"
         ariaLabel="Add a comment"
       />
