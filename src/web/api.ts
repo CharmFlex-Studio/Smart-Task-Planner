@@ -38,6 +38,17 @@ function scoped(url: string): string {
   return `${pathname}?${params.toString()}`;
 }
 
+/**
+ * The URL an attachment is served from, for the current workspace.
+ *
+ * Exported because the markdown renderer needs it: a link in a task file says
+ * `attachments/shot.png`, which is where the file actually is on disk, and the browser
+ * has to be pointed at the endpoint that serves it.
+ */
+export function attachmentUrl(name: string): string {
+  return `/api${scoped(`/attachments/${name}`)}`;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -117,6 +128,25 @@ export const api = {
 
   createTask: (body: Record<string, unknown>, dryRun = false) =>
     post<WriteResult>(`/tasks${dryRun ? '?dryRun=1' : ''}`, body),
+  /** Upload one file into the current workspace's attachments folder. */
+  uploadAttachment: async (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    // No content-type header: the browser has to set the multipart boundary itself.
+    const res = await fetch(`/api${scoped('/attachments')}`, { method: 'POST', body: form });
+    const text = await res.text();
+    const body = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+    if (!res.ok) {
+      const err = body as { error?: string; code?: string; detail?: string };
+      throw new ApiError(
+        err.error ?? `Upload failed (${res.status})`,
+        err.code ?? 'internal',
+        err.detail,
+        res.status,
+      );
+    }
+    return body as { attachment: { name: string; href: string; bytes: number; markdown: string } };
+  },
   editLog: (id: string, index: number, text: string) =>
     request<{ task: Task }>(`/tasks/${encodeURIComponent(id)}/log/${index}`, {
       method: 'PATCH',

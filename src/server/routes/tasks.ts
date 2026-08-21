@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { PlannerContext } from '../context.js';
 import { buildToday } from '../today.js';
 import { fail } from './errors.js';
+import { ToolError } from '../tools/errors.js';
 import type { SetFieldName, Task, WriteResult } from '@shared/types.js';
 
 /**
@@ -112,6 +113,42 @@ export function taskRoutes(ctx: PlannerContext): Hono {
       return fail(c, err);
     }
   });
+
+  /**
+   * Attachments. Uploaded into this workspace's own folder and referenced from the
+   * markdown by a relative link, so the vault keeps explaining itself without the app.
+   */
+  app.post('/attachments', async (c) => {
+    try {
+      const form = await c.req.parseBody();
+      const file = form['file'];
+      if (!(file instanceof File)) {
+        return fail(c, new ToolError('invalid', 'No file was uploaded.'));
+      }
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const saved = await scope(c).attachments.save(file.name, bytes);
+      return c.json({ attachment: saved }, 201);
+    } catch (err) {
+      return fail(c, err);
+    }
+  });
+
+  app.get('/attachments/:name', async (c) => {
+    const file = await scope(c).attachments.read(c.req.param('name'));
+    if (!file) return c.notFound();
+
+    // Only the image safelist is shown in place. Anything else is a download, because an
+    // uploaded file served inline from this origin runs where the app runs.
+    c.header('Content-Type', file.type);
+    c.header('Cache-Control', 'private, max-age=60');
+    if (!file.inline) {
+      const safe = c.req.param('name').replace(/["\\]/g, '');
+      c.header('Content-Disposition', `attachment; filename="${safe}"`);
+    }
+    return c.body(file.body);
+  });
+
+  app.get('/attachments', async (c) => c.json({ attachments: await scope(c).attachments.list() }));
 
   /**
    * Editing and removing a comment. Not part of the seven task tools and not in the

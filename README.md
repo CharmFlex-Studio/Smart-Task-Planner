@@ -62,6 +62,26 @@ Delete a lane and its tasks are moved somewhere you choose before it goes. Put a
 `status:` in a task by hand that no lane matches and the column appears anyway, because a
 task that cannot be seen is worse than a column you did not ask for.
 
+## Attachments are files in the folder
+
+Paste an image, drop a file in, or use the paperclip in the editor. It lands in the
+workspace's own `attachments/` folder and the markdown gets an ordinary link to it:
+
+```markdown
+![screenshot.png](attachments/screenshot.png)
+[report.pdf](attachments/report.pdf)
+```
+
+Open the vault in Obsidian and the images are where the notes say they are. There is no
+attachment database, and nothing to export.
+
+Only ordinary image types are shown in place. Everything else is served as a download —
+including `.html` and `.svg`, which are documents that can carry script, and an attachment
+served inline from this origin would run where the app runs. Uploads are capped at 25 MB,
+and a name that already exists is never overwritten.
+
+The assistant cannot attach anything. Like lane and comment edits, this is UI-only.
+
 ## Due dates, with or without a time
 
 `due: 2026-08-25` and `due: 2026-08-25T14:30` are both fine. The difference is real: due

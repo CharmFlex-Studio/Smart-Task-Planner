@@ -6,6 +6,20 @@ here ships without a "what's new" — keep it up to date as part of the version 
 
 ## 0.4.1
 
+**Attach files and images** to a description or a comment. Paste one, drop one in, or use
+the paperclip. Images appear in place; anything else becomes a link you can click.
+
+They are ordinary files in the workspace's own `attachments/` folder, referenced by
+ordinary markdown — `![shot.png](attachments/shot.png)`. Open the vault in Obsidian and
+the images are simply there, next to the notes that mention them. Nothing is stored
+anywhere the folder cannot reconstruct.
+
+Only ordinary image types are ever shown in place. Everything else — including `.html` and
+`.svg` — is handed over as a download rather than rendered here, because a file served
+inline from this origin runs where the app runs, and a vault can be shared or synced by
+someone who is not you.
+
+
 **A due date can carry a time.** Leave it off and nothing changes — a task due *on* a day
 is not late until the day is over. Set one and it is late a minute after: something due at
 14:00 shows "Overdue by 1 hour" rather than waiting for midnight to notice. The time is

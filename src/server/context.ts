@@ -5,6 +5,7 @@ import type { VaultStore } from './vault/store.js';
 import { PlannerTools } from './tools/index.js';
 import { LaneTools } from './tools/lanes.js';
 import { CommentTools } from './tools/comments.js';
+import { AttachmentTools } from './tools/attachments.js';
 import type { WorkspaceTools } from './tools/workspaces.js';
 import type { EventBus } from './events.js';
 import type { GitUndo } from './git.js';
@@ -30,6 +31,8 @@ export interface Scope {
   lanes: LaneTools;
   /** Editing and removing comments. UI-only, like lanes — see `tools/comments.ts`. */
   comments: CommentTools;
+  /** Files attached to this workspace's tasks. UI-only for the same reasons. */
+  attachments: AttachmentTools;
 }
 
 export interface PlannerContext {
@@ -56,6 +59,7 @@ export function makeScope(vault: Vault, id?: string | null): Scope {
     tools,
     lanes: new LaneTools(store, tools),
     comments: new CommentTools(store),
+    attachments: new AttachmentTools(store),
   };
 }
 

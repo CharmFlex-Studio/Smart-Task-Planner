@@ -7,6 +7,7 @@ import { workspacePaths } from '../vault/workspaces.js';
 import { PlannerTools } from '../tools/index.js';
 import { LaneTools } from '../tools/lanes.js';
 import { CommentTools } from '../tools/comments.js';
+import { AttachmentTools } from '../tools/attachments.js';
 import { ProposalStore } from './proposals.js';
 import { executeWrite, summarize } from './chat.js';
 import type { ProposedChange } from '@shared/types.js';
@@ -56,6 +57,7 @@ beforeEach(async () => {
     tools,
     lanes: new LaneTools(store, tools),
     comments: new CommentTools(store),
+    attachments: new AttachmentTools(store),
   };
   proposals = new ProposalStore(() => scope);
 });

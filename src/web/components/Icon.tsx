@@ -11,6 +11,7 @@ export type IconName =
   | 'history'
   | 'more'
   | 'pencil'
+  | 'paperclip'
   | 'plus'
   | 'trash'
   | 'search'
@@ -31,6 +32,7 @@ export type IconName =
 
 const paths: Record<IconName, React.ReactNode> = {
   activity: <><path d="M4 12h3l2-5 4 10 2-5h5" /></>,
+  paperclip: <><path d="M20 11l-8.5 8.5a4.5 4.5 0 0 1-6.4-6.4L14 4.3a3 3 0 0 1 4.2 4.2l-8.9 8.9a1.5 1.5 0 0 1-2.1-2.1l8-8" /></>,
   pencil: <><path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></>,
   bold: <><path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z" /></>,
   italic: <><path d="M15 5h-5M14 19H9M14 5l-4 14" /></>,

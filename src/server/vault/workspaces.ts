@@ -27,6 +27,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { slugify } from './ids.js';
+import { ATTACHMENTS_DIR } from './attachments.js';
 
 /** The workspace a fresh vault starts with. */
 export const DEFAULT_WORKSPACE_ID = 'main';
@@ -47,6 +48,8 @@ export interface WorkspacePaths {
   tasks: string;
   archive: string;
   board: string;
+  /** Files attached to this workspace's tasks. Inside the folder, like everything else. */
+  attachments: string;
 }
 
 export function workspacePaths(vault: string, id: string): WorkspacePaths {
@@ -57,6 +60,7 @@ export function workspacePaths(vault: string, id: string): WorkspacePaths {
     tasks: path.join(dir, 'tasks'),
     archive: path.join(dir, 'archive'),
     board: path.join(dir, 'board.md'),
+    attachments: path.join(dir, ATTACHMENTS_DIR),
   };
 }
 

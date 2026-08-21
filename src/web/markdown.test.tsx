@@ -60,6 +60,36 @@ describe('it cannot be used to inject anything', () => {
   });
 });
 
+describe('images and attachments', () => {
+  it('renders an embed as an image', () => {
+    const out = html('![a screenshot](attachments/shot.png)');
+    expect(out).toContain('<img');
+    expect(out).toContain('alt="a screenshot"');
+    expect(out).toContain('loading="lazy"');
+  });
+
+  it('points an attachment link at the endpoint that serves it', () => {
+    expect(html('![x](attachments/shot.png)')).toContain('/api/attachments/shot.png');
+    expect(html('[report](attachments/report.pdf)')).toContain('/api/attachments/report.pdf');
+  });
+
+  it('leaves every other link exactly as written', () => {
+    expect(html('[x](https://example.com)')).toContain('href="https://example.com"');
+    expect(html('![x](https://example.com/a.png)')).toContain('src="https://example.com/a.png"');
+  });
+
+  it('refuses a javascript: source rather than emitting an img for it', () => {
+    const out = html('![x](javascript:alert(1))');
+    expect(out).not.toContain('<img');
+    expect(out).toContain('javascript:alert(1)');
+  });
+
+  it('tells an embed from a link by the leading bang', () => {
+    expect(html('[not an image](attachments/shot.png)')).not.toContain('<img');
+    expect(html('[not an image](attachments/shot.png)')).toContain('<a ');
+  });
+});
+
 describe('blocks', () => {
   it('renders headings, demoted so a file cannot outrank the page', () => {
     expect(html('# Title')).toContain('<h3>Title</h3>');

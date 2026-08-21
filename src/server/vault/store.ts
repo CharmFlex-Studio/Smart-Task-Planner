@@ -232,6 +232,17 @@ export class VaultStore {
   }
 
   /** Raw file text, for building a diff without touching the disk. */
+  /**
+   * Where this workspace keeps its attachments.
+   *
+   * The only path handed out, and it is this workspace's — the isolation stays
+   * structural, so an attachment handler cannot reach another workspace's files even by
+   * being given the wrong name.
+   */
+  get attachmentsDir(): string {
+    return this.paths.attachments;
+  }
+
   rawOf(id: string): string | undefined {
     const rel = this.byId.get(id);
     return rel ? this.entries.get(rel)?.parsed.raw : undefined;

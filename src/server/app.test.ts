@@ -585,3 +585,90 @@ describe('a due date may carry a time', () => {
     expect((await make('not-a-date')).status).toBe(400);
   });
 });
+
+/**
+ * Attachments are ordinary files in the workspace's own folder, linked from the markdown.
+ * The parts worth pinning down are the boundaries: where bytes may land, and what may be
+ * handed back inline.
+ */
+describe('attachments', () => {
+  const upload = async (name: string, body: string, type = 'application/octet-stream') => {
+    const form = new FormData();
+    form.append('file', new File([body], name, { type }));
+    return app.request('http://localhost/api/attachments', { method: 'POST', body: form });
+  };
+
+  it('saves a file and hands back the markdown to insert', async () => {
+    const res = await upload('shot.png', 'not-really-a-png');
+    expect(res.status).toBe(201);
+    const { attachment } = await res.json();
+    expect(attachment.name).toBe('shot.png');
+    expect(attachment.markdown).toBe('![shot.png](attachments/shot.png)');
+  });
+
+  it('links rather than embeds anything that is not an image', async () => {
+    const { attachment } = await (await upload('report.pdf', 'pdf-bytes')).json();
+    expect(attachment.markdown).toBe('[report.pdf](attachments/report.pdf)');
+  });
+
+  it('puts the file in the workspace folder, where the link says it is', async () => {
+    await upload('here.png', 'bytes');
+    const onDisk = await fs.readFile(path.join(dir, 'main', 'attachments', 'here.png'), 'utf8');
+    expect(onDisk).toBe('bytes');
+  });
+
+  it('never overwrites — the same name twice keeps both files', async () => {
+    await upload('same.png', 'first');
+    const { attachment } = await (await upload('same.png', 'second')).json();
+    expect(attachment.name).toBe('same-1.png');
+    expect(await fs.readFile(path.join(dir, 'main', 'attachments', 'same.png'), 'utf8')).toBe(
+      'first',
+    );
+  });
+
+  it('cannot be talked into writing outside the folder', async () => {
+    const { attachment } = await (await upload('../../escaped.png', 'bytes')).json();
+    expect(attachment.name).toBe('escaped.png');
+    await expect(fs.access(path.join(dir, 'escaped.png'))).rejects.toThrow();
+    await expect(fs.access(path.join(dir, 'main', 'attachments', 'escaped.png'))).resolves
+      .toBeUndefined();
+  });
+
+  it('refuses an empty upload', async () => {
+    expect((await upload('empty.png', '')).status).toBe(400);
+  });
+
+  it('serves an image inline, with its real type', async () => {
+    await upload('inline.png', 'bytes');
+    const res = await get('/api/attachments/inline.png');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('image/png');
+    expect(res.headers.get('content-disposition')).toBeNull();
+  });
+
+  it('sends anything else as a download rather than rendering it here', async () => {
+    await upload('page.html', '<script>alert(1)</script>');
+    const res = await get('/api/attachments/page.html');
+    expect(res.headers.get('content-type')).toContain('application/octet-stream');
+    expect(res.headers.get('content-disposition')).toContain('attachment');
+  });
+
+  it('sends an svg as a download too — it is a document, not just a picture', async () => {
+    await upload('logo.svg', '<svg onload="alert(1)"></svg>');
+    const res = await get('/api/attachments/logo.svg');
+    expect(res.headers.get('content-disposition')).toContain('attachment');
+  });
+
+  it('cannot be talked into reading outside the folder', async () => {
+    expect((await get('/api/attachments/..%2F..%2Fboard.md')).status).toBe(404);
+    expect((await get('/api/attachments/nothing-here.png')).status).toBe(404);
+  });
+
+  it('lists what the workspace holds', async () => {
+    await upload('one.png', 'a');
+    await upload('two.pdf', 'bb');
+    const { attachments } = await (await get('/api/attachments')).json();
+    expect(attachments.map((a: { name: string }) => a.name).sort()).toEqual(['one.png', 'two.pdf']);
+    expect(attachments.find((a: { name: string }) => a.name === 'two.pdf').bytes).toBe(2);
+  });
+});

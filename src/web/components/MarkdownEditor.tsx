@@ -10,7 +10,7 @@
  * The toolbar still works on the text, through the same pure helpers the textarea used.
  */
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
 import { history, historyKeymap, defaultKeymap } from '@codemirror/commands';
@@ -20,6 +20,8 @@ import { continuation, shiftIndent } from '../editor/list-commands.js';
 import { editorTheme } from '../editor/theme.js';
 import { applyWrap, applyLinePrefix, type Selection } from '../markdown-edit.js';
 import { linkClicking } from '../editor/link-click.js';
+import { attachFiles, filesFrom } from '../editor/attach.js';
+import { usePlanner } from '../state.js';
 import { Icon, type IconName } from './Icon.js';
 
 interface Action {
@@ -63,6 +65,17 @@ export function MarkdownEditor({
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
+  const picker = useRef<HTMLInputElement>(null);
+  const { setError } = usePlanner();
+  const [dragging, setDragging] = useState(false);
+
+  const attach = useCallback(
+    (files: readonly File[]) => {
+      const v = view.current;
+      if (v && files.length) void attachFiles(v, files, setError);
+    },
+    [setError],
+  );
 
   // Held in refs so the extensions built once below always call the current ones, rather
   // than closing over the first render's props.
@@ -70,6 +83,15 @@ export function MarkdownEditor({
   useEffect(() => {
     latest.current = { onChange, onCommit, onCancel };
   });
+
+  // The extensions are built once, so the handlers reach the current uploader through a
+  // ref rather than closing over the first render's.
+  const attachFilesRef = useRef<(v: EditorView, files: readonly File[]) => Promise<void>>(
+    async () => {},
+  );
+  useEffect(() => {
+    attachFilesRef.current = (v, files) => attachFiles(v, files, setError);
+  }, [setError]);
 
   useEffect(() => {
     if (!host.current) return;
@@ -143,6 +165,22 @@ export function MarkdownEditor({
       markdown({ base: markdownLanguage }),
       livePreview(),
       linkClicking(),
+      EditorView.domEventHandlers({
+        paste: (event, v) => {
+          const files = filesFrom(event.clipboardData);
+          if (!files.length) return false;
+          event.preventDefault();
+          void attachFilesRef.current(v, files);
+          return true;
+        },
+        drop: (event, v) => {
+          const files = filesFrom(event.dataTransfer);
+          if (!files.length) return false;
+          event.preventDefault();
+          void attachFilesRef.current(v, files);
+          return true;
+        },
+      }),
       editorTheme,
       EditorView.lineWrapping,
       EditorView.updateListener.of((u) => {
@@ -227,11 +265,43 @@ export function MarkdownEditor({
             <Icon name={a.icon} size={15} />
           </button>
         ))}
-        <span className="md-hint" title="⌘-click a link to open it">live markdown</span>
+        <span className="md-tool-sep" aria-hidden="true" />
+        <button
+          type="button"
+          className="md-tool"
+          title="Attach a file or image"
+          aria-label="Attach a file or image"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => picker.current?.click()}
+        >
+          <Icon name="paperclip" size={15} />
+        </button>
+        <input
+          ref={picker}
+          type="file"
+          multiple
+          hidden
+          onChange={(e) => {
+            attach(Array.from(e.target.files ?? []));
+            // Cleared so choosing the same file twice in a row still fires.
+            e.target.value = '';
+          }}
+        />
+        <span className="md-hint" title="⌘-click a link to open it. Paste or drop a file to attach it.">
+          live markdown
+        </span>
       </div>
       <div
         ref={host}
-        className="md-surface"
+        className={dragging ? 'md-surface dragging' : 'md-surface'}
+        onDragOver={(e) => {
+          if (filesFrom(e.dataTransfer).length || e.dataTransfer?.types.includes('Files')) {
+            e.preventDefault();
+            setDragging(true);
+          }
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={() => setDragging(false)}
         style={minHeight ? { minHeight } : undefined}
         onKeyDown={onKeyDown}
         role="textbox"

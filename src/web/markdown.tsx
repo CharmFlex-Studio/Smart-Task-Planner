@@ -15,10 +15,27 @@
 
 import React from 'react';
 import { safeUrl } from './safe-url.js';
+import { attachmentUrl } from './api.js';
 
 /* ------------------------------------------------------------------- inline */
 
-const INLINE = /(`[^`]+`)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\n]+\*)|(_[^_\n]+_)|(\[[^\]]*\]\([^)\s]*\))/;
+// The leading `!` is what separates an embed from a link.
+const INLINE =
+  /(`[^`]+`)|(\*\*[^*]+\*\*)|(__[^_]+__)|(\*[^*\n]+\*)|(_[^_\n]+_)|(!?\[[^\]]*\]\([^)\s]*\))/;
+
+/**
+ * A link into the workspace's attachments folder, resolved to the endpoint serving it.
+ *
+ * The file says `attachments/shot.png` because that is where the file is — open the vault
+ * in Obsidian and it resolves. The browser needs the API path instead, and only for that
+ * one prefix; every other link is left exactly as written.
+ */
+function resolveHref(raw: string): string | null {
+  const url = safeUrl(raw);
+  if (url === null) return null;
+  const m = /^(?:\.\/)?attachments\/(.+)$/.exec(url);
+  return m ? attachmentUrl(m[1]!) : url;
+}
 
 function renderInline(text: string, key = 0): React.ReactNode[] {
   const out: React.ReactNode[] = [];
@@ -38,10 +55,21 @@ function renderInline(text: string, key = 0): React.ReactNode[] {
       out.push(<code key={i++}>{tok.slice(1, -1)}</code>);
     } else if (tok.startsWith('**') || tok.startsWith('__')) {
       out.push(<strong key={i++}>{renderInline(tok.slice(2, -2), i * 100)}</strong>);
+    } else if (tok.startsWith('![')) {
+      const split = tok.indexOf('](');
+      const alt = tok.slice(2, split);
+      const src = resolveHref(tok.slice(split + 2, -1));
+      out.push(
+        src ? (
+          <img key={i++} className="md-image" src={src} alt={alt} loading="lazy" />
+        ) : (
+          <span key={i++}>{tok}</span>
+        ),
+      );
     } else if (tok.startsWith('[')) {
       const split = tok.indexOf('](');
       const label = tok.slice(1, split);
-      const href = safeUrl(tok.slice(split + 2, -1));
+      const href = resolveHref(tok.slice(split + 2, -1));
       out.push(
         href ? (
           <a key={i++} href={href} target="_blank" rel="noreferrer noopener">
