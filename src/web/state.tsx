@@ -10,6 +10,7 @@ import React, {
 import type { AiStatus, Board, Lane, Task, VaultEvent, WorkspaceSummary } from '@shared/types.js';
 import type { TodayView } from '../server/today.js';
 import { api, ApiError, setApiWorkspace, type Settings } from './api.js';
+import { connectLive } from './live.js';
 
 /** Remembering the open workspace is a property of this tab, so it lives in the browser. */
 const WORKSPACE_KEY = 'planner.workspace';
@@ -159,8 +160,11 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
   // The live connection. Any vault event just triggers a refresh: the payloads are small,
   // the server is local, and "recompute everything" is far easier to keep correct than a
   // hand-merged cache.
+  //
+  // `connectLive` holds the stream only while this tab is on screen. That is what keeps a
+  // pile of open tabs from spending the browser's whole six-connection budget for this
+  // origin on streams, which starves every fetch the app makes — see live.ts.
   useEffect(() => {
-    const source = new EventSource('/api/events');
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     const nudge = () => {
@@ -168,18 +172,24 @@ export function PlannerProvider({ children }: { children: React.ReactNode }) {
       timer = setTimeout(() => void refresh(), 80);
     };
 
-    source.addEventListener('ready', () => setConnected(true));
-    source.addEventListener('vault', (event) => {
-      const payload = JSON.parse((event as MessageEvent<string>).data) as VaultEvent;
-      if (payload.kind === 'ai-status') setAi(payload.status);
-      else nudge();
+    const disconnect = connectLive({
+      open: () => new EventSource('/api/events'),
+      visible: () => document.visibilityState === 'visible',
+      watchVisibility: (onChange) => {
+        document.addEventListener('visibilitychange', onChange);
+        return () => document.removeEventListener('visibilitychange', onChange);
+      },
+      onEvent: (payload: VaultEvent) => {
+        if (payload.kind === 'ai-status') setAi(payload.status);
+        else nudge();
+      },
+      onConnected: setConnected,
+      onResume: () => void refresh(),
     });
-    source.onerror = () => setConnected(false);
-    source.onopen = () => setConnected(true);
 
     return () => {
       clearTimeout(timer);
-      source.close();
+      disconnect();
     };
   }, [refresh]);
 

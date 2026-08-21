@@ -61,14 +61,35 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * How long to wait before calling a request lost.
+ *
+ * The server is on loopback and answers in single-digit milliseconds, so anything still
+ * outstanding after this is not slow, it is stuck — most often queued behind the browser's
+ * per-origin connection limit rather than actually in flight. Generous enough to survive a
+ * cold model listing, short enough that the UI says something instead of showing a spinner
+ * for the rest of the afternoon. Silence is the one failure mode a local app cannot afford:
+ * there is no status page to check and nothing in the window to suggest what went wrong.
+ */
+const REQUEST_TIMEOUT_MS = 20_000;
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`/api${scoped(url)}`, {
       ...init,
       headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
+      signal: init?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') {
+      throw new ApiError(
+        'The planner server did not answer in time. If several planner tabs are open, ' +
+          'close the extra ones and reload — a browser only allows a handful of ' +
+          'connections to one address, and open tabs share them.',
+        'timeout',
+      );
+    }
     throw new ApiError('The planner server is not responding.', 'offline');
   }
   const text = await res.text();
