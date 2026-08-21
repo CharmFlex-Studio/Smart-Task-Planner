@@ -15,18 +15,38 @@ ON A MAC
 
 1. Double-click:   macOS - Install watsmytask.command
 
-2. Your Mac will probably refuse the first time, saying it cannot check the
-   file for malware. This is normal. It says that about anything not sold
-   through the App Store. To allow it:
+2. Your Mac will refuse the first time. It says something like:
+
+      "Apple could not verify [...] is free of malware"
+
+   This is normal and expected. macOS says it about anything not sold through
+   the App Store or signed with a paid Apple certificate. To allow it:
 
       Open  System Settings  >  Privacy & Security
       Scroll down to the Security section
-      You will see a line about "macOS - Install watsmytask.command"
+      You will see a line naming the installer, with a button
       Click  Open Anyway
-      Then double-click the file again
+      Then double-click the file again and click Open
 
-   On an older Mac there is no such line. Instead, right-click the file,
+   On macOS 14 and older there is no such line. Instead, right-click the file,
    choose Open, and click Open in the box that appears.
+
+   NO "OPEN ANYWAY" BUTTON? On a work or school Mac, an IT policy can remove
+   it. Two ways round that:
+
+      Easiest, if you have Node installed - open Terminal and run:
+
+         npx watsmytask
+
+      That installs and starts it with no security prompt at all, because
+      nothing was downloaded through a browser.
+
+      Or unblock this file - open Terminal, type the following, then drag
+      the installer into the window and press Return:
+
+         xattr -d com.apple.quarantine 
+
+      Then double-click the installer as normal.
 
 3. A black window opens and asks a question or two. Press Return to accept
    each one. When it finishes, watsmytask opens in your web browser.

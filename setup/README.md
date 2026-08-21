@@ -25,17 +25,28 @@ preserves it.
 
 1. Double-click **`macOS - Install watsmytask.command`**.
 
-2. macOS will very likely block it the first time, saying it cannot be opened because it
-   is from an unidentified developer. That happens to everything not distributed through
-   the App Store or signed with a paid Apple certificate. To allow it:
+2. macOS **will** block it the first time, with wording like *"Apple could not verify
+   'macOS - Install watsmytask.command' is free of malware"*. That happens to everything
+   not distributed through the App Store or signed with a paid Apple certificate — it is
+   a statement about the certificate, not about the file. To allow it:
 
    **macOS 15 Sequoia and newer** — open **System Settings → Privacy & Security**, scroll
-   down to the Security section, find the line naming the installer, and click
-   **Open Anyway**. Then double-click the file again.
+   to the Security section, find the line naming the installer, and click **Open Anyway**.
+   Then double-click the file again and click **Open**.
 
-   **macOS 14 and older** — right-click the file, choose **Open**, then click **Open** in
-   the dialog. (This shortcut was removed in Sequoia, which is why the newer path above
-   goes through System Settings instead.)
+   **macOS 14 and older** — right-click the file, choose **Open**, then **Open** in the
+   dialog. (Apple removed this shortcut in Sequoia, which is why newer versions go
+   through System Settings.)
+
+   **No "Open Anyway" button?** On a managed work or school Mac, IT policy can remove it.
+   Either install without downloading anything — `npx watsmytask` raises no prompt at all,
+   because nothing arrived via a browser — or clear the quarantine flag by hand:
+
+   ```bash
+   xattr -d com.apple.quarantine ~/Downloads/watsmytask-installer/"macOS - Install watsmytask.command"
+   ```
+
+   Then double-click it as normal.
 
 3. Answer the question or two it asks, pressing Return to accept each default.
 

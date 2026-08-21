@@ -851,10 +851,14 @@ html.js .revealed .rise:nth-child(3) { transition-delay: .14s; }
           <ol>
             <li>Download <strong>watsmytask-installer.zip</strong> from the latest release and unzip it.</li>
             <li>Double-click the installer for your computer and read <strong>READ ME FIRST.txt</strong>.</li>
-            <li>Allow it past the one security prompt — <strong>Open Anyway</strong> on macOS, <strong>Run anyway</strong> on Windows.</li>
+            <li>Allow it past the one security prompt. macOS: <strong>System Settings → Privacy &amp; Security → Open Anyway</strong>. Windows: <strong>More info → Run anyway</strong>.</li>
           </ol>
           <p class="req">
             It leaves a launcher in your Applications folder on a Mac, and on your Desktop on Windows.
+            The security prompt appears because the installers are not signed with a paid
+            certificate — they are plain text, so read them first if you would rather check.
+            On a managed Mac with no <strong>Open Anyway</strong> button, use
+            <span class="inline-code">npx watsmytask</span> instead; it raises no prompt.
           </p>
           <a class="btn btn-primary" href="https://github.com/CharmFlex-Studio/Smart-Task-Planner/releases/latest/download/watsmytask-installer.zip" download>Download the installer</a>
           <p class="req" style="margin-top:0;">Always the newest version. About 15&nbsp;KB — the installer fetches the rest.</p>
