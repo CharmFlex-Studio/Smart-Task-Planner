@@ -4,6 +4,16 @@ What changed for someone using watsmytask. The release workflow reads the sectio
 the version being released and puts it in the release notes, so a version with no section
 here ships without a "what's new" — keep it up to date as part of the version bump.
 
+## 0.5.3
+
+**Switching models no longer takes the planner down with it.** Changing the model could
+crash llama.cpp — and the crash took the whole app with it, closing the window on your
+tasks over something that is meant to be optional. Two causes: the model ran inside the
+app's own process group, so it received our shutdown signal on top of one it had already
+got, which llama.cpp answers by aborting mid-flight; and nothing caught the failure that
+followed, which in Node ends the process. The model now runs in its own group, and a
+background failure in the AI is logged and survived rather than fatal.
+
 ## 0.5.2
 
 **Fixes the model list hanging on "Loading models…".** 0.5.1 started reading each model's

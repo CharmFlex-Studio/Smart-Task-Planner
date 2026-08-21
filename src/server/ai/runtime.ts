@@ -103,7 +103,13 @@ export class LlamaRuntime {
         '--jinja',
         '--no-webui',
       ],
-      { stdio: ['ignore', log, log], detached: false },
+      // Its own process group. Without this the child sits in ours, so a Ctrl-C in the
+      // terminal reaches it directly at the same moment it reaches us — and our SIGTERM
+      // lands on top as a second interrupt, which llama.cpp answers by aborting mid-flight
+      // ("Received second interrupt"), tripping an assertion in the Metal backend while
+      // command buffers are still outstanding. Detached, we are the only thing signalling
+      // it, and stop() kills the whole group so nothing is left orphaned.
+      { stdio: ['ignore', log, log], detached: true },
     );
 
     child.on('exit', (code, signal) => {
@@ -163,9 +169,21 @@ export class LlamaRuntime {
     this.child = null;
     this.port = null;
 
+    // Negative pid signals the whole group, which is what the child leads now. Wrapped
+    // because a child that has already exited throws ESRCH, and "it is already gone" is
+    // the outcome we wanted anyway.
+    const signal = (sig: NodeJS.Signals) => {
+      try {
+        if (child.pid) process.kill(-child.pid, sig);
+        else child.kill(sig);
+      } catch {
+        /* already gone */
+      }
+    };
+
     await new Promise<void>((resolve) => {
       const kill = setTimeout(() => {
-        child.kill('SIGKILL');
+        signal('SIGKILL');
         resolve();
       }, 5000);
       kill.unref?.();
@@ -173,7 +191,7 @@ export class LlamaRuntime {
         clearTimeout(kill);
         resolve();
       });
-      child.kill('SIGTERM');
+      signal('SIGTERM');
     });
     this.setState('stopped');
   }

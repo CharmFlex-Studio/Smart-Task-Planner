@@ -50,7 +50,39 @@ function isPortTaken(err: unknown): boolean {
   return (err as { code?: string } | null)?.code === 'EADDRINUSE';
 }
 
+/**
+ * Keep the planner alive when something optional falls over.
+ *
+ * Node exits the process on an unhandled rejection, which means a promise nobody caught
+ * — a request in flight to llama-server when it dies, a model download losing its
+ * connection — takes the task server with it. That is the wrong trade for this app: the
+ * AI is a plugin and the planner is meant to work without it, so a model crashing must
+ * not close the window on someone's notes.
+ *
+ * Logged loudly rather than swallowed. Something that reaches here is a bug worth fixing;
+ * it is just not worth losing the vault server over.
+ */
+function keepAliveThroughPluginFailures(): void {
+  process.on('unhandledRejection', (reason) => {
+    console.error('\n[watsmytask] a background task failed and was not handled:');
+    console.error(reason instanceof Error ? (reason.stack ?? reason.message) : reason);
+    console.error('[watsmytask] the planner is still running. Your tasks are unaffected.\n');
+  });
+
+  // An uncaught synchronous throw is a different matter: the state it left behind is
+  // unknown, so this says what happened in words and then goes, rather than dying with a
+  // stack trace and no explanation.
+  process.on('uncaughtException', (err) => {
+    console.error('\n[watsmytask] stopped by an unexpected error:');
+    console.error(err.stack ?? err.message);
+    console.error('\n[watsmytask] your tasks are markdown files and are unaffected.\n');
+    process.exit(1);
+  });
+}
+
 async function main(): Promise<void> {
+  keepAliveThroughPluginFailures();
+
   const parsed = parseArgs(process.argv.slice(2));
 
   if (parsed.kind === 'help') return void console.log(HELP);
