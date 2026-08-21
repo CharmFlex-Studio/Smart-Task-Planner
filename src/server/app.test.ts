@@ -484,3 +484,104 @@ describe('ai routes without a model installed', () => {
     });
   });
 });
+
+/**
+ * Comments are editable and removable from the UI, and only from the UI: these go through
+ * `CommentTools`, which is deliberately not among the seven tools the model is given.
+ */
+describe('editing and removing a comment', () => {
+  const withComments = async () => {
+    const created = await (
+      await send('/api/tasks', 'POST', { title: 'Commented' })
+    ).json();
+    const id = created.task.fields.id;
+    await send(`/api/tasks/${id}/log`, 'POST', { text: 'first note' });
+    await send(`/api/tasks/${id}/log`, 'POST', { text: 'second note' });
+    return id;
+  };
+
+  it('edits one comment and leaves the other alone', async () => {
+    const id = await withComments();
+    const res = await send(`/api/tasks/${id}/log/0`, 'PATCH', { text: 'first, corrected' });
+    expect(res.status).toBe(200);
+    const task = (await res.json()).task;
+    expect(task.log.map((e: { text: string }) => e.text)).toEqual([
+      'first, corrected',
+      'second note',
+    ]);
+  });
+
+  it('keeps the comment its original timestamp — an edit fixes wording, not history', async () => {
+    const id = await withComments();
+    const before = (await (await get(`/api/tasks/${id}`)).json()).task.log[0].at;
+    const after = (
+      await (await send(`/api/tasks/${id}/log/0`, 'PATCH', { text: 'reworded' })).json()
+    ).task.log[0].at;
+    expect(after).toBe(before);
+  });
+
+  it('removes one comment', async () => {
+    const id = await withComments();
+    const res = await send(`/api/tasks/${id}/log/0`, 'DELETE');
+    expect(res.status).toBe(200);
+    expect((await res.json()).task.log.map((e: { text: string }) => e.text)).toEqual([
+      'second note',
+    ]);
+  });
+
+  it('refuses an index that is not there rather than touching the wrong one', async () => {
+    const id = await withComments();
+    expect((await send(`/api/tasks/${id}/log/9`, 'DELETE')).status).toBe(404);
+    expect((await send(`/api/tasks/${id}/log/9`, 'PATCH', { text: 'x' })).status).toBe(404);
+  });
+
+  it('refuses to empty a comment, pointing at delete instead', async () => {
+    const id = await withComments();
+    const res = await send(`/api/tasks/${id}/log/0`, 'PATCH', { text: '   ' });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/needs some text/i);
+  });
+
+  it('leaves the description and the other comment byte-identical', async () => {
+    const id = await withComments();
+    await send(`/api/tasks/${id}`, 'PATCH', { field: 'description', value: 'Keep me exactly.' });
+    await send(`/api/tasks/${id}/log/0`, 'PATCH', { text: 'changed' });
+    const raw = await (await get(`/api/tasks/${id}/raw`)).text();
+    expect(raw).toContain('Keep me exactly.');
+    expect(raw).toContain('second note');
+    expect(raw).not.toContain('first note');
+  });
+});
+
+describe('a due date may carry a time', () => {
+  const make = async (due: string) =>
+    await send('/api/tasks', 'POST', { title: 'Timed', due });
+
+  it('accepts a date on its own', async () => {
+    const res = await make('2026-08-25');
+    expect(res.status).toBe(201);
+    expect((await res.json()).task.fields.due).toBe('2026-08-25');
+  });
+
+  it('accepts a date with a time, and stores it as written', async () => {
+    const res = await make('2026-08-25T14:30');
+    expect(res.status).toBe(201);
+    expect((await res.json()).task.fields.due).toBe('2026-08-25T14:30');
+  });
+
+  it('accepts a space instead of the T, which is what people type', async () => {
+    expect((await (await make('2026-08-25 14:30')).json()).task.fields.due).toBe(
+      '2026-08-25T14:30',
+    );
+  });
+
+  it('refuses a time that does not exist', async () => {
+    expect((await make('2026-08-25T25:00')).status).toBe(400);
+    expect((await make('2026-08-25T14:70')).status).toBe(400);
+  });
+
+  it('refuses a date that does not exist', async () => {
+    expect((await make('2026-02-31')).status).toBe(400);
+    expect((await make('not-a-date')).status).toBe(400);
+  });
+});

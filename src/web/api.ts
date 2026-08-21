@@ -117,6 +117,15 @@ export const api = {
 
   createTask: (body: Record<string, unknown>, dryRun = false) =>
     post<WriteResult>(`/tasks${dryRun ? '?dryRun=1' : ''}`, body),
+  editLog: (id: string, index: number, text: string) =>
+    request<{ task: Task }>(`/tasks/${encodeURIComponent(id)}/log/${index}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ text }),
+    }),
+  deleteLog: (id: string, index: number) =>
+    request<{ task: Task }>(`/tasks/${encodeURIComponent(id)}/log/${index}`, {
+      method: 'DELETE',
+    }),
   addLog: (id: string, body: { type?: string; text: string }, dryRun = false) =>
     post<WriteResult>(`/tasks/${encodeURIComponent(id)}/log${dryRun ? '?dryRun=1' : ''}`, body),
   setField: (id: string, field: string, value: string | string[]) =>

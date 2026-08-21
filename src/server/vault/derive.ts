@@ -31,11 +31,27 @@ function parseTime(value: string | undefined): Date | undefined {
 }
 
 /** Due dates are calendar days in the user's own timezone, never UTC instants. */
-function parseDueDate(value: string | undefined): Date | undefined {
-  const m = value?.match(/^(\d{4})-(\d{2})-(\d{2})/);
+/**
+ * A due date, and whether it carried a time.
+ *
+ * The distinction matters downstream: something due *on* a day is not late until the day
+ * is over, while something due *at* 14:00 is late at 14:01. Treating them the same makes
+ * one of those two wrong.
+ */
+function parseDueDate(
+  value: string | undefined,
+): { at: Date; hasTime: boolean } | undefined {
+  const m = value?.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);
   if (!m) return undefined;
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return Number.isNaN(d.getTime()) ? undefined : d;
+  const hasTime = m[4] !== undefined;
+  const at = new Date(
+    Number(m[1]),
+    Number(m[2]) - 1,
+    Number(m[3]),
+    hasTime ? Number(m[4]) : 0,
+    hasTime ? Number(m[5]) : 0,
+  );
+  return Number.isNaN(at.getTime()) ? undefined : { at, hasTime };
 }
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -86,8 +102,13 @@ export function deriveSignals(
 
   const due = parseDueDate(fields.due);
   if (due) {
-    derived.daysUntilDue = calendarDaysBetween(now, due);
-    derived.overdue = derived.daysUntilDue < 0 && !done;
+    derived.daysUntilDue = calendarDaysBetween(now, due.at);
+    derived.dueHasTime = due.hasTime;
+    // With a time, late means past that moment. Without one, a task is not late until
+    // the whole day has gone.
+    derived.overdue =
+      !done && (due.hasTime ? due.at.getTime() < now.getTime() : derived.daysUntilDue < 0);
+    if (due.hasTime) derived.hoursUntilDue = (due.at.getTime() - now.getTime()) / 3_600_000;
   }
 
   derived.attentionReasons = attentionReasons(derived, done);
@@ -111,10 +132,24 @@ function attentionReasons(d: DerivedSignals, done: boolean): string[] {
   if (done) return [];
   const reasons: string[] = [];
 
-  if (d.overdue && d.daysUntilDue !== undefined) {
-    reasons.push(`Overdue by ${plural(-d.daysUntilDue, 'day')}`);
+  if (d.overdue) {
+    // Inside a day, hours are the useful unit: "Overdue by 0 days" says nothing.
+    const hours = d.hoursUntilDue;
+    if (hours !== undefined && hours > -24) {
+      const late = Math.max(1, Math.floor(-hours));
+      reasons.push(`Overdue by ${plural(late, 'hour')}`);
+    } else if (d.daysUntilDue !== undefined) {
+      reasons.push(`Overdue by ${plural(Math.max(1, -d.daysUntilDue), 'day')}`);
+    } else {
+      reasons.push('Overdue');
+    }
   } else if (d.daysUntilDue === 0) {
-    reasons.push('Due today');
+    const hours = d.hoursUntilDue;
+    reasons.push(
+      hours !== undefined && hours < 24
+        ? `Due in ${plural(Math.max(1, Math.round(hours)), 'hour')}`
+        : 'Due today',
+    );
   } else if (d.daysUntilDue === 1) {
     reasons.push('Due tomorrow');
   }

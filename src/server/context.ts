@@ -4,6 +4,7 @@ import type { Vault } from './vault/vault.js';
 import type { VaultStore } from './vault/store.js';
 import { PlannerTools } from './tools/index.js';
 import { LaneTools } from './tools/lanes.js';
+import { CommentTools } from './tools/comments.js';
 import type { WorkspaceTools } from './tools/workspaces.js';
 import type { EventBus } from './events.js';
 import type { GitUndo } from './git.js';
@@ -17,7 +18,7 @@ import type { AiPlugin } from './ai/plugin.js';
  */
 
 /**
- * One workspace, and the only three things allowed to touch its files. A request gets a
+ * One workspace, and the only things allowed to touch its files. A request gets a
  * scope and nothing wider, so a handler cannot reach another workspace's tasks even by
  * accident — which is what the assistant's promise rests on.
  */
@@ -27,6 +28,8 @@ export interface Scope {
   store: VaultStore;
   tools: PlannerTools;
   lanes: LaneTools;
+  /** Editing and removing comments. UI-only, like lanes — see `tools/comments.ts`. */
+  comments: CommentTools;
 }
 
 export interface PlannerContext {
@@ -46,7 +49,14 @@ export interface PlannerContext {
 export function makeScope(vault: Vault, id?: string | null): Scope {
   const store = vault.store(id);
   const tools = new PlannerTools(store);
-  return { id: store.id, name: store.name, store, tools, lanes: new LaneTools(store, tools) };
+  return {
+    id: store.id,
+    name: store.name,
+    store,
+    tools,
+    lanes: new LaneTools(store, tools),
+    comments: new CommentTools(store),
+  };
 }
 
 export function makeSettingsUpdater(ctx: { paths: Paths; settings: Settings }) {

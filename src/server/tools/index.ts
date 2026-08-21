@@ -40,7 +40,14 @@ import { ToolError } from './errors.js';
 import { localIso, logStamp } from './time.js';
 
 const SET_FIELDS: readonly SetFieldName[] = ['title', 'status', 'due', 'tags', 'description'];
-const DUE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
+/**
+ * `2026-08-25`, or `2026-08-25T14:30` when the time matters.
+ *
+ * The time is optional because most things are due on a day, not at a moment, and a
+ * planner that makes you pick 00:00 for all of them is lying about precision it does not
+ * have. Stored the way it is typed, so a date-only due stays date-only in the file.
+ */
+const DUE_FORMAT = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2})?$/;
 
 export interface ListArgs {
   status?: string;
@@ -308,9 +315,29 @@ export class PlannerTools {
   }
 
   private mustDue(value: string): string {
-    const v = String(value).trim();
-    if (DUE_FORMAT.test(v)) return v;
-    throw new ToolError('invalid', `"${value}" is not a date.`, 'Use YYYY-MM-DD.');
+    // A space instead of the T is what a person types, and what several editors write.
+    const v = String(value).trim().replace(' ', 'T');
+    if (!DUE_FORMAT.test(v)) {
+      throw new ToolError(
+        'invalid',
+        `"${value}" is not a date.`,
+        'Use YYYY-MM-DD, or YYYY-MM-DDTHH:MM to include a time.',
+      );
+    }
+    // The shape being right does not make it a real date: 2026-02-31T25:00 matches.
+    const [date, time] = v.split('T');
+    const [y, m, d] = date!.split('-').map(Number);
+    const real = new Date(y!, m! - 1, d!);
+    if (real.getFullYear() !== y || real.getMonth() !== m! - 1 || real.getDate() !== d) {
+      throw new ToolError('invalid', `"${value}" is not a real date.`);
+    }
+    if (time) {
+      const [hh, mm] = time.split(':').map(Number);
+      if (hh! > 23 || mm! > 59) {
+        throw new ToolError('invalid', `"${value}" is not a real time.`, 'Hours 00-23, minutes 00-59.');
+      }
+    }
+    return v;
   }
 
   private mustStamp(value: string): string {

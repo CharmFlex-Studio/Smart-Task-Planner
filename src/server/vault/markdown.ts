@@ -292,6 +292,57 @@ export function formatLogLine(entry: LogEntry, eol = '\n'): string {
   return [head, ...rest.map((l) => `  ${l}`)].join(eol);
 }
 
+/**
+ * Which lines of the file each log entry occupies, in file order.
+ *
+ * Editing or removing a comment has to touch that comment's lines and nothing else — the
+ * same promise every other write in this app makes — so the ranges have to come from the
+ * same reading of the file that produced the entries. Recomputing them by searching for
+ * the text would find the wrong one the moment two comments say the same thing.
+ */
+export function logEntryRanges(raw: string): { from: number; to: number }[] {
+  const eol = detectEol(raw);
+  const lines = raw.split(eol);
+  const { bodyStart } = splitFrontmatter(lines);
+
+  let at = lines.findIndex((l, i) => i >= bodyStart && LOG_HEADING.test(l));
+  if (at < 0) return [];
+
+  const ranges: { from: number; to: number }[] = [];
+  for (let i = at + 1; i < lines.length; i++) {
+    const line = lines[i]!;
+    if (LOG_LINE.test(line)) {
+      ranges.push({ from: i, to: i });
+      continue;
+    }
+    const last = ranges.at(-1);
+    // The same rule parseLog uses, so the ranges and the entries always agree.
+    if (last && CONTINUATION.test(line)) last.to = i;
+  }
+  return ranges;
+}
+
+/** Rewrite one entry in place, leaving every other line of the file untouched. */
+export function replaceLogEntry(raw: string, index: number, entry: LogEntry): string {
+  const eol = detectEol(raw);
+  const ranges = logEntryRanges(raw);
+  const range = ranges[index];
+  if (!range) return raw;
+  const lines = raw.split(eol);
+  const replacement = formatLogLine(entry, eol).split(eol);
+  return [...lines.slice(0, range.from), ...replacement, ...lines.slice(range.to + 1)].join(eol);
+}
+
+/** Remove one entry, and only its lines. */
+export function removeLogEntry(raw: string, index: number): string {
+  const eol = detectEol(raw);
+  const ranges = logEntryRanges(raw);
+  const range = ranges[index];
+  if (!range) return raw;
+  const lines = raw.split(eol);
+  return [...lines.slice(0, range.from), ...lines.slice(range.to + 1)].join(eol);
+}
+
 /** Append one entry to the tail of the file, creating the `## Log` section if needed. */
 export function appendLogEntry(raw: string, entry: LogEntry): string {
   const eol = detectEol(raw);

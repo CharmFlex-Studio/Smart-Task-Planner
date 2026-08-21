@@ -5,6 +5,7 @@ import { api } from '../api.js';
 import { Empty, MomentumDot, ReasonPill, relativeTime } from './Bits.js';
 import { Icon } from './Icon.js';
 import { Markdown, toggleTaskItem } from '../markdown.js';
+import { splitDue, joinDue } from '../due.js';
 import { MarkdownEditor } from './MarkdownEditor.js';
 
 /**
@@ -65,7 +66,7 @@ export function TaskDetail({ task, onBack }: { task: Task; onBack(): void }) {
               Comments <span className="muted">{task.log.length}</span>
             </h2>
             <Composer taskId={task.fields.id} />
-            <Timeline log={task.log} />
+            <Timeline log={task.log} taskId={task.fields.id} />
           </section>
         </section>
 
@@ -92,15 +93,47 @@ export function TaskDetail({ task, onBack }: { task: Task; onBack(): void }) {
               <input
                 id="task-due"
                 type="date"
-                value={task.fields.due ?? ''}
-                onChange={(event) => void set('due', event.target.value)}
+                value={splitDue(task.fields.due).date}
+                onChange={(event) =>
+                  void set('due', joinDue(event.target.value, splitDue(task.fields.due).time))
+                }
               />
               {task.fields.due && (
-                <button className="icon-btn" onClick={() => void set('due', '')} aria-label="Clear due date">
+                <button
+                  className="icon-btn"
+                  onClick={() => void set('due', '')}
+                  aria-label="Clear due date"
+                >
                   <Icon name="x" size={14} />
                 </button>
               )}
             </div>
+            {/* The time only appears once there is a day to hang it on, and is never
+                defaulted to midnight — that would turn every date into a deadline that
+                expires the moment the day starts. */}
+            {splitDue(task.fields.due).date && (
+              <div className="side-row due-time">
+                <input
+                  type="time"
+                  aria-label="Due time (optional)"
+                  value={splitDue(task.fields.due).time}
+                  onChange={(event) =>
+                    void set('due', joinDue(splitDue(task.fields.due).date, event.target.value))
+                  }
+                />
+                {splitDue(task.fields.due).time ? (
+                  <button
+                    className="icon-btn"
+                    onClick={() => void set('due', splitDue(task.fields.due).date)}
+                    aria-label="Clear due time"
+                  >
+                    <Icon name="x" size={14} />
+                  </button>
+                ) : (
+                  <span className="muted small">optional</span>
+                )}
+              </div>
+            )}
 
             <dl className="side-facts">
               <dt>Created</dt>
@@ -256,25 +289,122 @@ function Description({ value, onSave }: { value: string; onSave(value: string): 
 /* ---------------------------------------------------------------- comments */
 
 /** Newest first, so a comment you just left is the one you see. */
-function Timeline({ log }: { log: LogEntry[] }) {
+function Timeline({ log, taskId }: { log: LogEntry[]; taskId: string }) {
   if (log.length === 0) {
     return <Empty>No comments yet.</Empty>;
   }
-  const sorted = [...log].sort((a, b) => b.at.localeCompare(a.at));
+  // Sorted for reading, but each entry carries the position it has in the file — that is
+  // what identifies it for an edit, and two comments can easily say the same thing.
+  const sorted = log
+    .map((entry, index) => ({ entry, index }))
+    .sort((a, b) => b.entry.at.localeCompare(a.entry.at));
 
   return (
     <div className="timeline">
-      {sorted.map((entry, i) => (
-        <article className="entry" key={`${entry.at}-${i}`}>
-          <div className="entry-head">{formatStamp(entry.at)}</div>
-          {/* Read-only boxes: there is no write operation for editing a log entry, and
-              rule 4 says not to add an eighth tool to get one. */}
-          <div className="entry-text">
-            <Markdown source={entry.text} />
-          </div>
-        </article>
+      {sorted.map(({ entry, index }) => (
+        <Entry key={`${entry.at}-${index}`} entry={entry} index={index} taskId={taskId} />
       ))}
     </div>
+  );
+}
+
+function Entry({ entry, index, taskId }: { entry: LogEntry; index: number; taskId: string }) {
+  const { act } = usePlanner();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(entry.text);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => setDraft(entry.text), [entry.text]);
+
+  const save = async () => {
+    const text = draft.trim();
+    if (!text || text === entry.text) {
+      setEditing(false);
+      setDraft(entry.text);
+      return;
+    }
+    setBusy(true);
+    const ok = await act(() => api.editLog(taskId, index, text));
+    setBusy(false);
+    if (ok) setEditing(false);
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    await act(() => api.deleteLog(taskId, index));
+    setBusy(false);
+    setConfirming(false);
+  };
+
+  return (
+    <article className="entry">
+      <div className="entry-head">
+        <span>{formatStamp(entry.at)}</span>
+        {!editing && !confirming && (
+          // Only on hover or focus: a row of controls on every comment turns a quiet
+          // timeline into a busy one.
+          <span className="entry-actions">
+            <button className="icon-btn" onClick={() => setEditing(true)} aria-label="Edit comment">
+              <Icon name="pencil" size={13} />
+            </button>
+            <button
+              className="icon-btn"
+              onClick={() => setConfirming(true)}
+              aria-label="Delete comment"
+            >
+              <Icon name="trash" size={13} />
+            </button>
+          </span>
+        )}
+      </div>
+
+      {editing ? (
+        <>
+          <MarkdownEditor
+            value={draft}
+            onChange={setDraft}
+            onCommit={() => void save()}
+            onCancel={() => {
+              setDraft(entry.text);
+              setEditing(false);
+            }}
+            autoFocus
+            minHeight="4rem"
+            ariaLabel="Edit comment"
+          />
+          <div className="row">
+            <button className="btn" onClick={() => void save()} disabled={busy}>
+              {busy ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              className="btn ghost"
+              onClick={() => {
+                setDraft(entry.text);
+                setEditing(false);
+              }}
+            >
+              Cancel
+            </button>
+            <span className="keyboard-hint">⌘↵</span>
+          </div>
+        </>
+      ) : confirming ? (
+        <div className="entry-confirm">
+          <span>Delete this comment?</span>
+          <button className="btn danger" onClick={() => void remove()} disabled={busy}>
+            {busy ? 'Deleting…' : 'Delete'}
+          </button>
+          <button className="btn ghost" onClick={() => setConfirming(false)}>
+            Keep
+          </button>
+        </div>
+      ) : (
+        <div className="entry-text">
+          <Markdown source={entry.text} />
+        </div>
+      )}
+    </article>
   );
 }
 

@@ -62,6 +62,23 @@ Delete a lane and its tasks are moved somewhere you choose before it goes. Put a
 `status:` in a task by hand that no lane matches and the column appears anyway, because a
 task that cannot be seen is worse than a column you did not ask for.
 
+## Due dates, with or without a time
+
+`due: 2026-08-25` and `due: 2026-08-25T14:30` are both fine. The difference is real: due
+*on* a day is not late until the day is over, while due *at* 14:00 is late at 14:01, and
+the attention line says so — "Overdue by 1 hour" rather than nothing until midnight. The
+time is never defaulted; a date stays a date.
+
+## Comments are yours to fix
+
+Hover a comment to edit or delete it. An edit keeps the entry's own timestamp — it records
+when the thing happened, not when the wording was corrected — and rewrites only that
+entry's lines.
+
+These live in `src/server/tools/comments.ts`, outside the seven task tools and absent from
+the model's schema, for the same reason lane edits are: the assistant can add a comment,
+and has no way to go back and rewrite or delete one.
+
 ## Rich text, without leaving markdown
 
 Descriptions and comments render markdown: emphasis, inline code, links, nested lists,

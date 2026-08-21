@@ -10,6 +10,7 @@ export type IconName =
   | 'comment'
   | 'history'
   | 'more'
+  | 'pencil'
   | 'plus'
   | 'trash'
   | 'search'
@@ -30,6 +31,7 @@ export type IconName =
 
 const paths: Record<IconName, React.ReactNode> = {
   activity: <><path d="M4 12h3l2-5 4 10 2-5h5" /></>,
+  pencil: <><path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></>,
   bold: <><path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z" /></>,
   italic: <><path d="M15 5h-5M14 19H9M14 5l-4 14" /></>,
   code: <><path d="M9 7l-5 5 5 5M15 7l5 5-5 5" /></>,

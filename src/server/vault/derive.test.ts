@@ -88,3 +88,53 @@ describe('attention reasons', () => {
     expect(d.attentionReasons).toEqual([]);
   });
 });
+
+/**
+ * A due date with a time means something different from one without: due *on* a day is
+ * not late until the day is over, due *at* 14:00 is late at 14:01. Both sides of every
+ * boundary, because getting one of them wrong makes half the tasks in a board lie.
+ */
+describe('a due date with a time', () => {
+  // NOW is 2026-08-20T12:00.
+  const at = (due: string) => deriveSignals(fields({ due }), [], NOW);
+
+  it('is not overdue a minute before, and is a minute after', () => {
+    expect(at('2026-08-20T12:01').overdue).toBe(false);
+    expect(at('2026-08-20T11:59').overdue).toBe(true);
+  });
+
+  it('is overdue later the same day, which a date alone could not express', () => {
+    expect(at('2026-08-20T09:00').overdue).toBe(true);
+    expect(at('2026-08-20').overdue).toBe(false); // same day, no time: not late yet
+  });
+
+  it('counts the lateness in hours while it is still inside a day', () => {
+    expect(at('2026-08-20T09:00').attentionReasons[0]).toBe('Overdue by 3 hours');
+    expect(at('2026-08-20T11:00').attentionReasons[0]).toBe('Overdue by 1 hour');
+  });
+
+  it('goes back to days once it is more than a day late', () => {
+    expect(at('2026-08-18T09:00').attentionReasons[0]).toBe('Overdue by 2 days');
+  });
+
+  it('says how long is left when it is due later today', () => {
+    expect(at('2026-08-20T15:00').attentionReasons[0]).toBe('Due in 3 hours');
+  });
+
+  it('still says "Due today" for a date with no time', () => {
+    expect(at('2026-08-20').attentionReasons[0]).toBe('Due today');
+  });
+
+  it('reports whether the time was there, so the UI can show one', () => {
+    expect(at('2026-08-20T15:00').dueHasTime).toBe(true);
+    expect(at('2026-08-20').dueHasTime).toBe(false);
+  });
+
+  it('is never overdue once the task is done', () => {
+    expect(deriveSignals(fields({ due: '2026-08-19T09:00' }), [], NOW, true).overdue).toBe(false);
+  });
+
+  it('still counts calendar days, so "Due tomorrow" survives a time', () => {
+    expect(at('2026-08-21T09:00').attentionReasons[0]).toBe('Due tomorrow');
+  });
+});

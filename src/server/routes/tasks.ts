@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import type { PlannerContext } from '../context.js';
 import { buildToday } from '../today.js';
 import { fail } from './errors.js';
-import type { SetFieldName, WriteResult } from '@shared/types.js';
+import type { SetFieldName, Task, WriteResult } from '@shared/types.js';
 
 /**
  * The task API. Every write route is a thin wrapper over one tool operation -- the routes
@@ -24,6 +24,16 @@ export function taskRoutes(ctx: PlannerContext): Hono {
   const scope = (c: { req: { query(k: string): string | undefined } }) => ctx.scope(c.req.query('ws'));
 
   /** Commit an applied write to the vault's git repo, if it is one. Never blocks the response. */
+  /**
+   * A write that was applied directly rather than proposed — comment edits, which have no
+   * diff to approve because no model asked for them. Same commit and same live update, so
+   * History and the open tab do not care which path a change came down.
+   */
+  const recordDirect = (task: Task, verb: string) => {
+    void ctx.git.commit(`planner: ${verb} "${task.fields.title}"`, [task.path]);
+    ctx.bus.emit({ kind: 'task-changed', path: task.path, task });
+  };
+
   const record = (result: WriteResult, verb: string) => {
     if (!result.applied) return;
     void ctx.git.commit(`planner: ${verb} "${result.task.fields.title}"`, [result.diff.path]);
@@ -98,6 +108,39 @@ export function taskRoutes(ctx: PlannerContext): Hono {
       );
       record(result, 'log');
       return c.json(result);
+    } catch (err) {
+      return fail(c, err);
+    }
+  });
+
+  /**
+   * Editing and removing a comment. Not part of the seven task tools and not in the
+   * model's schema — see `tools/comments.ts` for why. Applied directly, like lane edits,
+   * because there is no model proposing them.
+   */
+  app.patch('/tasks/:id/log/:index', async (c) => {
+    try {
+      const body = await c.req.json<{ text?: string }>();
+      const task = await scope(c).comments.edit(
+        c.req.param('id'),
+        Number(c.req.param('index')),
+        String(body.text ?? ''),
+      );
+      recordDirect(task, 'edit comment on');
+      return c.json({ task });
+    } catch (err) {
+      return fail(c, err);
+    }
+  });
+
+  app.delete('/tasks/:id/log/:index', async (c) => {
+    try {
+      const task = await scope(c).comments.remove(
+        c.req.param('id'),
+        Number(c.req.param('index')),
+      );
+      recordDirect(task, 'delete comment on');
+      return c.json({ task });
     } catch (err) {
       return fail(c, err);
     }

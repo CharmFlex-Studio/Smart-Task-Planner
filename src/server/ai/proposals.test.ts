@@ -6,6 +6,7 @@ import { VaultStore } from '../vault/store.js';
 import { workspacePaths } from '../vault/workspaces.js';
 import { PlannerTools } from '../tools/index.js';
 import { LaneTools } from '../tools/lanes.js';
+import { CommentTools } from '../tools/comments.js';
 import { ProposalStore } from './proposals.js';
 import { executeWrite, summarize } from './chat.js';
 import type { ProposedChange } from '@shared/types.js';
@@ -54,6 +55,7 @@ beforeEach(async () => {
     store,
     tools,
     lanes: new LaneTools(store, tools),
+    comments: new CommentTools(store),
   };
   proposals = new ProposalStore(() => scope);
 });

@@ -84,6 +84,10 @@ export interface DerivedSignals {
   hoursSinceUpdate: number;
   /** Whole days until `due` — negative when overdue. */
   daysUntilDue?: number;
+  /** Hours until `due`, only when the due date carried a time. Negative when past. */
+  hoursUntilDue?: number;
+  /** True when `due` carried a time, so the UI knows to show one. */
+  dueHasTime?: boolean;
   overdue: boolean;
   /** Human-readable reasons this task wants attention. Empty means it does not. */
   attentionReasons: string[];

@@ -1246,3 +1246,46 @@ code { font-family: var(--mono); font-size: 12.5px; }
   font-size: 0.68rem;
   color: var(--faint);
 }
+
+/* Comment controls: present, but not shouting. A row of buttons on every entry turns a
+   quiet timeline into a busy one, so they wait for hover or keyboard focus. */
+.entry-actions {
+  display: inline-flex;
+  gap: 0.15rem;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.entry:hover .entry-actions,
+.entry:focus-within .entry-actions {
+  opacity: 1;
+}
+@media (hover: none) {
+  /* Nothing hovers on a touch screen, so they are simply always there. */
+  .entry-actions { opacity: 1; }
+}
+.entry-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.entry-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.88rem;
+  color: var(--muted);
+  padding: 0.2rem 0;
+}
+.btn.danger {
+  color: var(--red);
+  border-color: var(--red);
+  background: var(--red-soft);
+}
+.btn.danger:hover { filter: brightness(0.97); }
+.due-time { margin-top: 0.35rem; }
+.small { font-size: 0.78rem; }
+@media (prefers-reduced-motion: reduce) {
+  .entry-actions { transition: none; }
+}

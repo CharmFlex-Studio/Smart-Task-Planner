@@ -4,6 +4,22 @@ What changed for someone using watsmytask. The release workflow reads the sectio
 the version being released and puts it in the release notes, so a version with no section
 here ships without a "what's new" — keep it up to date as part of the version bump.
 
+## 0.4.1
+
+**A due date can carry a time.** Leave it off and nothing changes — a task due *on* a day
+is not late until the day is over. Set one and it is late a minute after: something due at
+14:00 shows "Overdue by 1 hour" rather than waiting for midnight to notice. The time is
+optional everywhere and never defaulted, because defaulting it to midnight would turn
+every date into a deadline that expires the moment the day starts.
+
+**Comments can be edited and deleted.** Hover a comment for the controls; deleting asks
+first. An edit changes the wording and keeps the comment's own timestamp, because the
+entry records when the thing happened, not when the typo was fixed.
+
+The assistant is deliberately not given either. It can add a comment and has no way to go
+back and rewrite or remove one — a log is a record, and a model quietly editing history is
+not a feature anyone asked for.
+
 ## 0.3.0
 
 **Checkboxes tick with a click, in the editor as well as the reading view.** Clicking one

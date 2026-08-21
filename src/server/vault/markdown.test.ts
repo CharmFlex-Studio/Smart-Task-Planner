@@ -6,6 +6,9 @@ import {
   setFrontmatterField,
   appendLogEntry,
   formatLogLine,
+  logEntryRanges,
+  replaceLogEntry,
+  removeLogEntry,
 } from './markdown.js';
 
 const FULL = `---
@@ -286,5 +289,100 @@ describe('serializeNewTask', () => {
     expect(p.fields.tags).toEqual(['work']);
     expect(p.log).toHaveLength(0);
     expect(src).toContain('## Log');
+  });
+});
+
+/**
+ * Editing a comment has to touch that comment and nothing else, like every other write
+ * here. These pin that down on a file with the awkward shapes: entries that span several
+ * lines, two comments with identical text, and junk between them.
+ */
+describe('editing and removing a comment', () => {
+  const FILE = [
+    '---',
+    'id: x',
+    'title: T',
+    '---',
+    '',
+    'The description.',
+    '',
+    '## Log',
+    '',
+    '- 2026-08-20 09:30 · note · first',
+    '- 2026-08-20 10:00 · note · second, which',
+    '  runs onto a second line',
+    '- 2026-08-20 11:00 · note · first',
+    '',
+  ].join('\n');
+
+  it('finds the lines each entry occupies, continuations included', () => {
+    expect(logEntryRanges(FILE)).toEqual([
+      { from: 9, to: 9 },
+      { from: 10, to: 11 },
+      { from: 12, to: 12 },
+    ]);
+  });
+
+  it('rewrites one entry and leaves every other line alone', () => {
+    const out = replaceLogEntry(FILE, 0, {
+      at: '2026-08-20T09:30',
+      type: 'note',
+      text: 'first, corrected',
+    });
+    expect(out.split('\n')[9]).toBe('- 2026-08-20 09:30 · note · first, corrected');
+    // Everything else is byte-identical.
+    const before = FILE.split('\n');
+    const after = out.split('\n');
+    before.forEach((line, i) => {
+      if (i !== 9) expect(after[i]).toBe(line);
+    });
+  });
+
+  it('rewrites a multi-line entry, replacing all of its lines', () => {
+    const out = replaceLogEntry(FILE, 1, {
+      at: '2026-08-20T10:00',
+      type: 'note',
+      text: 'now one line',
+    });
+    expect(out).toContain('- 2026-08-20 10:00 · note · now one line');
+    expect(out).not.toContain('runs onto a second line');
+    expect(parseTaskFile(out, 'tasks/t.md').log).toHaveLength(3);
+  });
+
+  it('can grow an entry from one line to several', () => {
+    const out = replaceLogEntry(FILE, 0, {
+      at: '2026-08-20T09:30',
+      type: 'note',
+      text: 'first\nwith more\n- and a list',
+    });
+    expect(parseTaskFile(out, 'tasks/t.md').log[0]!.text).toBe('first\nwith more\n- and a list');
+    expect(parseTaskFile(out, 'tasks/t.md').log).toHaveLength(3);
+  });
+
+  it('removes one entry, and only its lines', () => {
+    const out = removeLogEntry(FILE, 1);
+    const log = parseTaskFile(out, 'tasks/t.md').log;
+    expect(log.map((e) => e.text)).toEqual(['first', 'first']);
+    expect(out).toContain('The description.');
+    expect(out).toContain('## Log');
+  });
+
+  it('tells two identical comments apart by position, not by text', () => {
+    const out = removeLogEntry(FILE, 2);
+    const log = parseTaskFile(out, 'tasks/t.md').log;
+    expect(log.map((e) => e.at)).toEqual(['2026-08-20T09:30', '2026-08-20T10:00']);
+  });
+
+  it('leaves the file alone when the index is not there', () => {
+    expect(replaceLogEntry(FILE, 9, { at: '2026-08-20T09:30', type: 'note', text: 'x' })).toBe(FILE);
+    expect(removeLogEntry(FILE, 9)).toBe(FILE);
+    expect(removeLogEntry('no log here at all', 0)).toBe('no log here at all');
+  });
+
+  it('keeps CRLF line endings', () => {
+    const crlf = FILE.replace(/\n/g, '\r\n');
+    const out = removeLogEntry(crlf, 0);
+    expect(out.includes('\r\n')).toBe(true);
+    expect(out.split('\r\n').some((l) => l.includes('09:30'))).toBe(false);
   });
 });
