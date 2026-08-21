@@ -14,6 +14,11 @@ REM and a stray one turns a version check into a file it silently creates.
 
 set "APP_NAME=watsmytask"
 set "PACKAGE=watsmytask"
+REM Which version to install. "latest" is what you get running this out of the repo;
+REM build-release.sh rewrites it to the exact version when packing a release zip, so a
+REM zip labelled 1.0.0 installs 1.0.0. Pinning also makes a release whose npm publish
+REM never happened fail here loudly, rather than quietly installing the old version.
+set "VERSION_SPEC=latest"
 set "APP_DIR=%LOCALAPPDATA%\watsmytask"
 set "LAUNCHER=%USERPROFILE%\Desktop\watsmytask.bat"
 set "MIN_NODE_MAJOR=20"
@@ -98,11 +103,14 @@ if not exist "%APP_DIR%\package.json" (
   > "%APP_DIR%\package.json" echo { "name": "watsmytask-install", "private": true }
 )
 
-call npm install --prefix "%APP_DIR%" --no-audit --no-fund %PACKAGE%@latest
+call npm install --prefix "%APP_DIR%" --no-audit --no-fund %PACKAGE%@%VERSION_SPEC%
 if errorlevel 1 (
   echo.
-  echo   [x] The download failed.
+  echo   [x] Could not download %PACKAGE% %VERSION_SPEC%.
   echo       Check that you are online, then run this installer again.
+  echo       If it says no matching version was found, this installer is newer
+  echo       than what has been published. Get the current one from:
+  echo         https://github.com/CharmFlex-Studio/Smart-Task-Planner/releases/latest
   echo       Behind a corporate proxy, npm needs to know about it:
   echo         npm config set proxy http://your-proxy:port
   goto fail

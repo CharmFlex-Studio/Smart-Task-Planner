@@ -12,6 +12,12 @@ set -u
 
 APP_NAME="watsmytask"
 PACKAGE="watsmytask"
+# Which version to install. `latest` is what you get running this straight out of the
+# repo; setup/build-release.sh rewrites it to the exact version when it packs a release
+# zip, so a zip labelled 1.0.0 installs 1.0.0 and nothing else. Pinning also means a
+# release whose npm publish did not happen fails here, loudly, instead of quietly
+# installing the previous version and looking like it worked.
+VERSION_SPEC=latest
 # Kept relative to $HOME so the launcher can resolve it at run time rather than baking
 # in whatever the path happened to be on the day of the install.
 APP_SUBPATH="Library/Application Support/watsmytask"
@@ -113,10 +119,13 @@ if [ ! -f "$APP_DIR/package.json" ]; then
 JSON
 fi
 
-if ! npm install --prefix "$APP_DIR" --no-audit --no-fund "$PACKAGE@latest"; then
+if ! npm install --prefix "$APP_DIR" --no-audit --no-fund "$PACKAGE@$VERSION_SPEC"; then
   echo
-  err "The download failed."
+  err "Could not download $PACKAGE $VERSION_SPEC."
   echo "  Check that you are online, then run this installer again."
+  echo "  If it says no matching version was found, this installer is newer than"
+  echo "  what has been published — grab the current one from:"
+  echo "    https://github.com/CharmFlex-Studio/Smart-Task-Planner/releases/latest"
   echo "  If you are behind a proxy, npm needs to know about it:"
   echo "    npm config set proxy http://your-proxy:port"
   finish 1

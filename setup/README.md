@@ -89,6 +89,21 @@ watsmytask
 -h, --help            Show all options
 ```
 
+## Which version does the installer install?
+
+The exact one the download is labelled with. A zip from release 1.0.0 installs
+watsmytask 1.0.0 — `setup/build-release.sh` pins both installers to that version when it
+packs them, and refuses to build a zip where the pin did not take.
+
+Pinning rather than always taking the newest is deliberate. The download link on the
+homepage already points at the *latest* release, so anyone downloading fresh gets the
+current version anyway. What pinning buys is that a release whose npm publish did not
+happen fails loudly here, instead of quietly installing the previous version and looking
+like it worked.
+
+Running an installer straight from a clone of the repo installs `latest`, since there is
+no release to pin it to.
+
 ## Uninstalling
 
 Your tasks are **not** deleted by any of this — they are markdown files in
