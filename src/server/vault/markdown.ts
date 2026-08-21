@@ -155,6 +155,20 @@ export function parseTaskFile(
   return { fields, description, log, raw, hasFrontmatter, problems };
 }
 
+/**
+ * A line belonging to the entry above: indented, and not a new bullet.
+ *
+ * Whitespace-only lines count when they carry the two-space prefix, because a blank line
+ * inside an entry is what separates its paragraphs and closes its code fences. A truly
+ * empty line does not, so the blank line between the `## Log` heading and the first
+ * entry still ends nothing and starts nothing.
+ */
+const CONTINUATION = /^(?: {2}|[ \t]+\S)/;
+
+function dedentContinuation(line: string): string {
+  return line.startsWith('  ') ? line.slice(2) : line.trim();
+}
+
 function parseLog(lines: string[]): LogEntry[] {
   const out: LogEntry[] = [];
   for (const line of lines) {
@@ -169,10 +183,17 @@ function parseLog(lines: string[]): LogEntry[] {
       });
       continue;
     }
-    // Indented, non-bullet lines continue the entry above.
+    // Indented lines continue the entry above.
+    //
+    // De-indented by exactly the two spaces the serializer adds, rather than trimmed:
+    // in markdown the leading whitespace past that prefix is structure. Trimming it
+    // flattened a nested list into a flat one and pulled fenced code out of the list
+    // item it belonged to, which is silent corruption of what someone wrote.
+    // A line indented some other way is still trimmed, so hand-written vaults that
+    // predate this read exactly as they did before.
     const last = out.at(-1);
-    if (last && /^[ \t]+\S/.test(line)) {
-      last.text = `${last.text}\n${line.trim()}`;
+    if (last && CONTINUATION.test(line)) {
+      last.text = `${last.text}\n${dedentContinuation(line)}`;
     }
     // Anything else is junk we deliberately ignore. Because writes are surgical it stays
     // in the file untouched; we simply do not show it as an entry.

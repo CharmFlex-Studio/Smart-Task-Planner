@@ -4,6 +4,8 @@ import { usePlanner } from '../state.js';
 import { api } from '../api.js';
 import { Empty, MomentumDot, ReasonPill, relativeTime } from './Bits.js';
 import { Icon } from './Icon.js';
+import { Markdown, toggleTaskItem } from '../markdown.js';
+import { MarkdownEditor } from './MarkdownEditor.js';
 
 /**
  * One task, in full.
@@ -198,24 +200,26 @@ function Description({ value, onSave }: { value: string; onSave(value: string): 
     if (draft.trim() !== value.trim()) onSave(draft);
   };
 
+  // Ticking a box in the reading view goes through the same setField write as any other
+  // description edit, so it lands as a diff, an undoable commit and a surgical change to
+  // three characters — not a special path of its own.
+  const toggle = (index: number) => onSave(toggleTaskItem(value, index));
+
   return (
     <section className="description">
       <h2>Description</h2>
       {editing ? (
         <>
-          <textarea
+          <MarkdownEditor
             value={draft}
-            autoFocus
-            rows={Math.max(4, draft.split('\n').length + 1)}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                setDraft(value);
-                setEditing(false);
-              }
-              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) commit();
+            onChange={setDraft}
+            onCommit={commit}
+            onCancel={() => {
+              setDraft(value);
+              setEditing(false);
             }}
-            aria-label="Description"
+            autoFocus
+            ariaLabel="Description"
           />
           <div className="row">
             <button className="btn" onClick={commit}>Save</button>
@@ -231,9 +235,18 @@ function Description({ value, onSave }: { value: string; onSave(value: string): 
             <span className="keyboard-hint">⌘↵</span>
           </div>
         </>
+      ) : value ? (
+        // Not a <button> any more: it holds checkboxes and links now, and a control
+        // inside a control is neither clickable nor announced correctly.
+        <div className="description-body">
+          <Markdown source={value} options={{ onToggleTask: toggle }} />
+          <button className="description-edit" onClick={() => setEditing(true)}>
+            Edit
+          </button>
+        </div>
       ) : (
         <button className="description-body" onClick={() => setEditing(true)}>
-          {value ? value : <span className="muted">Add a description…</span>}
+          <span className="muted">Add a description…</span>
         </button>
       )}
     </section>
@@ -254,7 +267,11 @@ function Timeline({ log }: { log: LogEntry[] }) {
       {sorted.map((entry, i) => (
         <article className="entry" key={`${entry.at}-${i}`}>
           <div className="entry-head">{formatStamp(entry.at)}</div>
-          <div className="entry-text">{entry.text}</div>
+          {/* Read-only boxes: there is no write operation for editing a log entry, and
+              rule 4 says not to add an eighth tool to get one. */}
+          <div className="entry-text">
+            <Markdown source={entry.text} />
+          </div>
         </article>
       ))}
     </div>
@@ -265,7 +282,6 @@ function Composer({ taskId }: { taskId: string }) {
   const { act } = usePlanner();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
-  const box = useRef<HTMLTextAreaElement>(null);
 
   const submit = async () => {
     const value = text.trim();
@@ -275,23 +291,18 @@ function Composer({ taskId }: { taskId: string }) {
     setBusy(false);
     if (ok) {
       setText('');
-      box.current?.focus();
     }
   };
 
   return (
     <div className="composer">
-      <textarea
-        ref={box}
-        id={`comment-${taskId}`}
+      <MarkdownEditor
         value={text}
+        onChange={setText}
+        onCommit={() => void submit()}
         rows={3}
-        onChange={(event) => setText(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) void submit();
-        }}
         placeholder="Add a comment…"
-        aria-label="Add a comment"
+        ariaLabel="Add a comment"
       />
       <div className="row">
         <button className="btn" onClick={() => void submit()} disabled={!text.trim() || busy}>

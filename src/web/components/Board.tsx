@@ -4,6 +4,7 @@ import { usePlanner } from '../state.js';
 import { api } from '../api.js';
 import { buildColumns } from '../board.js';
 import { Icon } from './Icon.js';
+import { plainText } from '../markdown.js';
 import { DueChip, relativeTime } from './Bits.js';
 
 /**
@@ -394,7 +395,10 @@ function BoardCard({
   );
 }
 
+/** The first line of prose, with its markdown reduced to the words in it. */
 function firstLine(text: string): string {
-  const line = text.split('\n').find((l) => l.trim() && !l.trim().startsWith('#'));
+  const line = plainText(text)
+    .split('\n')
+    .find((l) => l.trim());
   return (line ?? '').trim();
 }

@@ -62,6 +62,23 @@ Delete a lane and its tasks are moved somewhere you choose before it goes. Put a
 `status:` in a task by hand that no lane matches and the column appears anyway, because a
 task that cannot be seen is worse than a column you did not ask for.
 
+## Rich text, without leaving markdown
+
+Descriptions and comments render markdown: emphasis, inline code, links, nested lists,
+checklists, fenced code with its language, quotes, headings and tables. The editor stays a
+textarea with a toolbar and shortcuts (⌘B, ⌘I, ⌘E, ⌘K, ⌘⇧8, ⌘⇧7, ⌘⇧L, ⌘⇧.) that insert
+the characters you would have typed yourself — so what is saved is what you can see, and
+your own formatting is never rewritten by an editor normalising a block.
+
+Ticking a checkbox in a description writes through `setField` like any other edit: three
+characters change, it lands as a diff and as an undoable commit. Checkboxes in *comments*
+render but do not toggle — there is no write operation for editing a log entry, and
+[rule 4](CLAUDE.md) says not to add an eighth tool to get one.
+
+The renderer builds React elements and never HTML, so nothing in a task file can inject
+markup into the page — which matters because task files arrive from shared folders, synced
+drives and models, none of which are the person reading the screen.
+
 ## Workspaces
 
 A workspace is a folder, and they are all the same shape — there is no special first one.

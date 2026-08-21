@@ -1088,3 +1088,156 @@ code { font-family: var(--mono); font-size: 12.5px; }
   .detail-layout { grid-template-columns: minmax(0, 1fr); }
   .detail-side { position: static; }
 }
+
+/* ------------------------------------------------------------------ markdown
+
+   Rendered description and comment text. Deliberately restrained: this is someone's
+   working note inside a dense panel, not an article, so the vertical rhythm stays tight
+   and nothing here introduces a second type scale. */
+
+.md > *:first-child { margin-top: 0; }
+.md > *:last-child { margin-bottom: 0; }
+.md p { margin: 0 0 0.6em; white-space: pre-wrap; }
+.md h3, .md h4, .md h5, .md h6 {
+  margin: 1em 0 0.4em;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.md a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.md a:hover { color: var(--accent-hover); }
+.md code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.05em 0.32em;
+}
+.md-code {
+  position: relative;
+  margin: 0.6em 0;
+  padding: 0.6rem 0.7rem;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow-x: auto;      /* a long line scrolls itself, never the panel */
+}
+.md-code code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  white-space: pre;
+}
+.md-code-lang {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--faint);
+  user-select: none;
+}
+.md-quote {
+  margin: 0.6em 0;
+  padding: 0.1em 0 0.1em 0.8rem;
+  border-left: 2px solid var(--accent-line);
+  color: var(--muted);
+}
+.md-hr { border: 0; border-top: 1px solid var(--line); margin: 1em 0; }
+.md ul, .md ol { margin: 0.4em 0; padding-left: 1.3em; }
+.md li { margin: 0.15em 0; }
+.md li > ul, .md li > ol { margin: 0.15em 0; }
+
+.md-tasks { list-style: none; padding-left: 0.1em; }
+.md-task label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  cursor: pointer;
+}
+.md-task input[type='checkbox'] {
+  margin: 0.32em 0 0;
+  accent-color: var(--accent);
+  flex: none;
+}
+.md-task input[type='checkbox']:disabled { cursor: default; }
+.md-task label:has(input:disabled) { cursor: default; }
+.md-checked > span { color: var(--faint); text-decoration: line-through; }
+
+.md-table-wrap { overflow-x: auto; margin: 0.6em 0; }
+.md-table { border-collapse: collapse; font-size: 0.88em; }
+.md-table th, .md-table td {
+  border: 1px solid var(--line);
+  padding: 0.28em 0.6em;
+  text-align: left;
+}
+.md-table th { background: var(--panel-2); font-weight: 600; }
+
+/* ------------------------------------------------------- the markdown editor */
+
+.md-editor {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  overflow: hidden;
+}
+.md-editor:focus-within { border-color: var(--accent); }
+.md-editor textarea {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  resize: vertical;
+}
+.md-editor textarea:focus { outline: none; box-shadow: none; }
+
+.md-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.3rem 0.35rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+  flex-wrap: wrap;
+}
+.md-tool {
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.md-tool:hover { background: var(--panel-3); color: var(--text); }
+.md-tool:active { background: var(--accent-soft); color: var(--accent); }
+.md-hint {
+  margin-left: auto;
+  padding-right: 0.25rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--faint);
+  user-select: none;
+}
+
+/* The description is a reading surface with an Edit affordance, not one big button. */
+.description-body .md { cursor: text; }
+.description-edit {
+  margin-top: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.description-edit:hover { color: var(--text); border-color: var(--accent-line); }

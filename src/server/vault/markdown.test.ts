@@ -5,6 +5,7 @@ import {
   setDescription,
   setFrontmatterField,
   appendLogEntry,
+  formatLogLine,
 } from './markdown.js';
 
 const FULL = `---
@@ -68,6 +69,40 @@ describe('parseTaskFile', () => {
     const p = parseTaskFile(src, 'tasks/t.md');
     expect(p.log).toHaveLength(2);
     expect(p.log[0]!.text).toBe('first line\nsecond line');
+  });
+
+  /**
+   * Markdown in a comment is only worth offering if what comes back out is what went in.
+   * Indentation past the two-space continuation prefix is structure, not decoration:
+   * trimming it turns a nested list flat and lifts a fenced block out of its list item.
+   */
+  it('round-trips nested lists, blank lines and code fences in a comment', () => {
+    const text = 'Findings:\n- outer\n  - nested\n\n```ts\nconst x = 1;\n```';
+    const line = formatLogLine({ at: '2026-08-21T09:04', type: 'note', text });
+    const src = `---\nid: x\ntitle: T\n---\n\n## Log\n\n${line}\n`;
+    expect(parseTaskFile(src, 'tasks/t.md').log[0]!.text).toBe(text);
+  });
+
+  it('keeps a blank line inside an entry, which closes a fence', () => {
+    const text = 'before\n\nafter';
+    const line = formatLogLine({ at: '2026-08-21T09:04', type: 'note', text });
+    const src = `---\nid: x\ntitle: T\n---\n\n## Log\n\n${line}\n`;
+    expect(parseTaskFile(src, 'tasks/t.md').log[0]!.text).toBe(text);
+  });
+
+  it('an empty line still separates entries rather than joining them', () => {
+    const src =
+      `---\nid: x\ntitle: T\n---\n\n## Log\n\n` +
+      `- 2026-08-20 09:30 · note · first\n\n- 2026-08-20 10:00 · note · second\n`;
+    const p = parseTaskFile(src, 'tasks/t.md');
+    expect(p.log.map((e) => e.text)).toEqual(['first', 'second']);
+  });
+
+  it('still trims a continuation indented some other way, as older vaults are', () => {
+    const src =
+      `---\nid: x\ntitle: T\n---\n\n## Log\n\n` +
+      `- 2026-08-20 09:30 · note · first\n\t  second\n`;
+    expect(parseTaskFile(src, 'tasks/t.md').log[0]!.text).toBe('first\nsecond');
   });
 
   it('keeps unparseable junk out of the log without throwing', () => {
