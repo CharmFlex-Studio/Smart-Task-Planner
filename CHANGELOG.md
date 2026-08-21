@@ -26,6 +26,11 @@ is not late until the day is over. Set one and it is late a minute after: someth
 optional everywhere and never defaulted, because defaulting it to midnight would turn
 every date into a deadline that expires the moment the day starts.
 
+**Checkboxes in a comment tick too**, the same as ones in a description. They were
+read-only because there was no write path for a log entry; adding one is what made
+comments editable, and leaving them read-only after that was a difference nobody could
+have explained.
+
 **Comments can be edited and deleted.** Hover a comment for the controls; deleting asks
 first. An edit changes the wording and keeps the comment's own timestamp, because the
 entry records when the thing happened, not when the typo was fixed.

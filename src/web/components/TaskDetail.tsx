@@ -330,6 +330,17 @@ function Entry({ entry, index, taskId }: { entry: LogEntry; index: number; taskI
     if (ok) setEditing(false);
   };
 
+  /**
+   * Ticking a box in a comment goes through the same edit as any other change to it, so
+   * it changes those three characters and keeps the entry's own timestamp. This was
+   * read-only until comments became editable — the reason was that there was no write
+   * path for a log entry, and once there was one the difference from a description was
+   * just an inconsistency nobody could have explained.
+   */
+  const toggle = async (box: number) => {
+    await act(() => api.editLog(taskId, index, toggleTaskItem(entry.text, box)));
+  };
+
   const remove = async () => {
     setBusy(true);
     await act(() => api.deleteLog(taskId, index));
@@ -401,7 +412,7 @@ function Entry({ entry, index, taskId }: { entry: LogEntry; index: number; taskI
         </div>
       ) : (
         <div className="entry-text">
-          <Markdown source={entry.text} />
+          <Markdown source={entry.text} options={{ onToggleTask: (b) => void toggle(b) }} />
         </div>
       )}
     </article>

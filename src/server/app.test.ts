@@ -535,6 +535,25 @@ describe('editing and removing a comment', () => {
     expect((await send(`/api/tasks/${id}/log/9`, 'PATCH', { text: 'x' })).status).toBe(404);
   });
 
+  it('ticks a checkbox inside a comment, changing only those characters', async () => {
+    const created = await (await send('/api/tasks', 'POST', { title: 'Boxes' })).json();
+    const id = created.task.fields.id;
+    await send(`/api/tasks/${id}/log`, 'POST', {
+      text: 'Plan:\n- [ ] one\n- [x] two',
+    });
+
+    // What the UI sends: the same text with one box flipped.
+    const res = await send(`/api/tasks/${id}/log/0`, 'PATCH', {
+      text: 'Plan:\n- [x] one\n- [x] two',
+    });
+    expect(res.status).toBe(200);
+
+    const raw = await (await get(`/api/tasks/${id}/raw`)).text();
+    expect(raw).toContain('- [x] one');
+    expect(raw).toContain('- [x] two');
+    expect(raw).toContain('Plan:');
+  });
+
   it('refuses to empty a comment, pointing at delete instead', async () => {
     const id = await withComments();
     const res = await send(`/api/tasks/${id}/log/0`, 'PATCH', { text: '   ' });

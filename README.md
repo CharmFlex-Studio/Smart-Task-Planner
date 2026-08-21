@@ -120,10 +120,8 @@ over it and nothing rewrites the buffer, which is what keeps a save surgical. A 
 editor that serialised back to markdown would normalise the whole block and quietly
 rewrite spacing and formatting you chose.
 
-Ticking a checkbox in a description writes through `setField` like any other edit: three
-characters change, it lands as a diff and as an undoable commit. Checkboxes in *comments*
-render but do not toggle — there is no write operation for editing a log entry, and
-[rule 4](CLAUDE.md) says not to add an eighth tool to get one.
+Ticking a checkbox writes three characters and nothing else, in a description or in a
+comment, and lands as an undoable commit like any other edit.
 
 The renderer builds React elements and never HTML, so nothing in a task file can inject
 markup into the page — which matters because task files arrive from shared folders, synced
